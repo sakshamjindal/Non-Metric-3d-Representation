@@ -1,4 +1,4 @@
-# nbdev template
+# Non-metric 3D visual and spatial representations
 
-Use this template to more easily create your nbdev project.
+Object centric representation in 3D
 
