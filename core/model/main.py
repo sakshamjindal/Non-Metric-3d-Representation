@@ -36,8 +36,8 @@ class Model(nn.Module):
 
     def forward(self,feed_dict_k, feed_dict_q):
 
-        scene_embeddings_q = get_scene_graph(feed_dict_q)
-        scene_embeddings_k = get_scene_graph(feed_dict_k)
+        scene_embeddings_q = self.get_scene_graph(feed_dict_q)
+        scene_embeddings_k = self.get_scene_graph(feed_dict_k)
 
         scene_embeddings_q = merge_pose_with_scene_embeddings(scene_embeddings_q, feed_dict_q["view"])
         scene_embeddings_k = merge_pose_with_scene_embeddings(scene_embeddings_k, feed_dict_k["view"])
