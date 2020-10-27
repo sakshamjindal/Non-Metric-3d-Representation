@@ -32,8 +32,8 @@ def collate_boxes(data):
     boxes_q = list(boxes_q)
     boxes_k = list(boxes_k)
  
-    object_boxes_q = np.concatenate(boxes_q, axis=0)
-    object_boxes_k = np.concatenate(boxes_k, axis=0)
+    object_boxes_q = torch.cat(boxes_q, dim=0)
+    object_boxes_k = torch.cat(boxes_k, dim=0)
     
     query_viewpoint = torch.stack(list(query_viewpoint))
     key_viewpoint = torch.stack(list(key_viewpoint))
@@ -125,21 +125,28 @@ class GQNDataset_pdisco(Dataset):
         
         images = torch.tensor(data['rgb_camXs_raw']).permute(0,3,1,2)/255.
         _, _, H_orig, W_orig = images.shape
-#         if not self.few_shot:
-#             images = F.interpolate(images, self.target_res)
+        query_image, key_image = images[0,:3,:,:], images[key_img_view,:3,:,:]
+        
+        tree_file = pickle.load(open(os.path.join("/home/mprabhud/dataset/clevr_veggies",data['tree_seq_filename']),"rb"))
+        tree,boxes,_,_ = bbox_rearrange(tree_file,boxes=[],classes={},all_classes=[])
+        boxes = np.stack(boxes)
+        num_boxes, _ = boxes.shape
+        boxes = boxes.reshape(1,1,num_boxes,2,3)
+        boxes = torch.tensor(boxes).cuda()
+        
+        camXs_T_origin_q =  utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][0]).reshape(1, 4, 4)).unsqueeze(1).cuda()
+        pix_T_camXs_q = torch.tensor(data['pix_T_cams_raw'][0]).reshape(1,1,4,4).cuda()
+        query_image = query_image.reshape(1,1,3,H_orig,W_orig)
+        boxes_q = utils_disco.get_bounding_boxes(torch.tensor(query_image), boxes, camXs_T_origin_q, pix_T_camXs_q, num_boxes)
+        
+        camXs_T_origin_k =  utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][key_img_view]).reshape(1, 4, 4)).unsqueeze(1).cuda()
+        pix_T_camXs_k = torch.tensor(data['pix_T_cams_raw'][key_img_view]).reshape(1,1,4,4).cuda()
+        key_image = key_image.reshape(1,1,3,H_orig,W_orig)
+        boxes_k = utils_disco.get_bounding_boxes(torch.tensor(key_image), boxes, camXs_T_origin_k, pix_T_camXs_k, num_boxes)
 
         images = images.permute(0,2,3,1)
-        query_image, key_image = images[0], images[key_img_view]
+        query_image, key_image = images[0,:,:,:3], images[key_img_view,:,:,:3]
         query_viewpoint, key_viewpoint = viewpoints[0], viewpoints[key_img_view]
-        
-        ###########################
-        ## TO FIX - FOR ONE VIEW ##
-#         tree_file = pickle.load(open(os.path.join("/home/mprabhud/dataset/clevr_veggies",data['tree_seq_filename']),"rb"))
-#         tree,boxes,_,_ = bbox_rearrange(tree_file,boxes=[],classes={},all_classes=[])
-#         boxes = np.stack(boxes)
-        num_boxes = np.random.randint(low=1, high=5) #boxes.shape
-        boxes = np.zeros([num_boxes, 6])
-        ##########################
         
         pix_T_cams_raw = np.stack((data['pix_T_cams_raw'][0], data['pix_T_cams_raw'][key_img_view]))
         # print("Pixt camXs shape: ", pix_T_cams_raw.shape)
@@ -150,11 +157,7 @@ class GQNDataset_pdisco(Dataset):
         camR_T_origin_raw = np.stack((data['camR_T_origin_raw'][0], data['camR_T_origin_raw'][key_img_view]))
         origin_T_camXs_raw = np.stack((data['origin_T_camXs_raw'][0], data['origin_T_camXs_raw'][key_img_view]))
         
-        
-#         metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda()}
-#         feed_dict_q = {"images":query_image, "objects":num_boxes, "objects_boxes":torch.tensor(boxes).cuda(), "viewpoint":query_viewpoint}
-#         feed_dict_k = {"images":key_image, "objects":num_boxes, "objects_boxes":torch.tensor(boxes).cuda(), "viewpoint":key_viewpoint}
-        return torch.tensor(query_image), num_boxes, torch.tensor(boxes), torch.tensor(query_viewpoint), torch.tensor(key_image), num_boxes, torch.tensor(boxes), torch.tensor(key_viewpoint), scene_num, key_img_view, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw), torch.tensor(origin_T_camXs_raw)
+        return torch.tensor(query_image), num_boxes, torch.tensor(boxes_q), torch.tensor(query_viewpoint), torch.tensor(key_image), num_boxes, torch.tensor(boxes_k), torch.tensor(key_viewpoint), scene_num, key_img_view, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw), torch.tensor(origin_T_camXs_raw)
 
 
 

@@ -106,7 +106,7 @@ def get_alignedboxes2thetaformat(aligned_boxes):
     return boxes
 
 
-def transform_boxes_to_corners(boxes, B):
+def transform_boxes_to_corners(boxes):
     # returns corners, shaped B x N x 8 x 3
     B, N, D = list(boxes.shape)
     assert(D==9)
@@ -444,6 +444,61 @@ def apply_pix_T_cam(pix_T_cam, xyz):
     y = (y*fy)/(z+EPS)+y0
     xy = torch.stack([x, y], axis=-1)
     return xy
+
+def get_box_camX1_corners(camX1_T_camX0, bbox_camX0_end, self_N):
+    # bbox_origin_end -> B, N, 2, 3
+    # camX_T_origin -> B, 4, 4
+
+    __pb = lambda x: pack_boxdim(x, self_N)
+    __ub = lambda x: unpack_boxdim(x, self_N)
+    bbox_camX0_theta = get_alignedboxes2thetaformat(bbox_camX0_end)
+    bbox_camX0_corners = transform_boxes_to_corners(bbox_camX0_theta)
+    bbox_camX1_corners = __ub(apply_4x4(camX1_T_camX0, __pb(bbox_camX0_corners)))
+    bbox_camX1_end = get_ends_of_corner(bbox_camX1_corners)
+    bbox_camX1_theta = get_alignedboxes2thetaformat(bbox_camX1_end) #torch.Size([2, 3, 9])
+    bbox_camX1_corners = transform_boxes_to_corners(bbox_camX1_theta)
+    return bbox_camX1_corners, bbox_camX1_end
+
+def get_bounding_boxes(rgb_camX1, bbox_camX0, camX1_T_camX0, pix_T_camX, self_N):
+    '''
+    rgb_camX1 -> B,S,3,H,W
+    bbox_camX0 -> B,S,N,2,3
+    camX1_T_camX0 -> B,S,4,4
+    pix_T_camX -> B,S,4,4
+    size -> scalar
+    '''
+    B,S,C,H,W = rgb_camX1.shape
+
+    __p = lambda x: pack_seqdim(x, B)
+    __u = lambda x: unpack_seqdim(x, B)
+    __pb = lambda x: pack_boxdim(x, self_N)
+    __ub = lambda x: unpack_boxdim(x, self_N)
+
+    bbox_camX1_corners, _ = get_box_camX1_corners(__p(camX1_T_camX0), __p(bbox_camX0), self_N)
+    
+    bbox_camX1_corners_ = __pb(bbox_camX1_corners)
+    pix_T_camX_ = __p(pix_T_camX)
+
+    bbox_pix_ = apply_pix_T_cam(pix_T_camX_, bbox_camX1_corners_)
+    bbox_pix = __u(__ub(bbox_pix_))
+
+    generated_boxes = torch.zeros(self_N, 4).cuda()
+    
+    for b in range(B):
+        for s in range(S):
+            rgb = rgb_camX1[b,s]
+            for n in range(self_N):
+                bbox = bbox_pix[b,s,n]
+                xmin, ymin = torch.min(bbox[:,0]), torch.min(bbox[:,1])
+                xmax, ymax = torch.max(bbox[:,0]), torch.max(bbox[:,1])
+                xmin, xmax = torch.clamp(xmin,0,W-1), torch.clamp(xmax,0,W-1)
+                ymin, ymax = torch.clamp(ymin,0,H-1), torch.clamp(ymax,0,H-1)
+                generated_boxes[n,0] = xmin
+                generated_boxes[n,1] = ymin
+                generated_boxes[n,2] = xmax
+                generated_boxes[n,3] = ymax
+    
+    return generated_boxes
 
 def get_cropped_rgb(x_data, v_data, metadata, args, __p, __u, view_idx, writer=None, step=None):
     N = args.N
