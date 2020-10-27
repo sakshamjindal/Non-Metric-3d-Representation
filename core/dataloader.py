@@ -17,6 +17,41 @@ import matplotlib.pyplot as plt
 import ipdb 
 st = ipdb.set_trace
 
+def collate_boxes(data):
+    query_image, num_boxes_q, boxes_q, query_viewpoint, key_image, num_boxes_k, boxes_k, key_viewpoint, scene_num, key_img_view, pix_T_cams_raw, camR_T_origin_raw, origin_T_camXs_raw = zip(*data)
+    batch_size = len(num_boxes_q)
+    
+#     print(torch.stack(list(query_image)))
+    query_image = torch.stack(list(query_image))
+    key_image = torch.stack(list(key_image))
+    
+ 
+    num_boxes_q = torch.tensor(list(num_boxes_q))
+    num_boxes_k = torch.tensor(list(num_boxes_k))
+    
+    boxes_q = list(boxes_q)
+    boxes_k = list(boxes_k)
+ 
+    object_boxes_q = np.concatenate(boxes_q, axis=0)
+    object_boxes_k = np.concatenate(boxes_k, axis=0)
+    
+    query_viewpoint = torch.stack(list(query_viewpoint))
+    key_viewpoint = torch.stack(list(key_viewpoint))
+    
+    scene_num = (list(scene_num))
+    key_img_view = (list(key_img_view))
+    pix_T_cams_raw = torch.stack(list(pix_T_cams_raw), dim=0)
+    camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), axis=0)
+    origin_T_camXs_raw = torch.stack(list(origin_T_camXs_raw), axis=0)
+    
+    
+    metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda()}
+    feed_dict_q = {"images":query_image, "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda(), "viewpoint":query_viewpoint}
+    feed_dict_k = {"images":key_image, "objects":num_boxes_k, "objects_boxes":torch.tensor(object_boxes_k).cuda(), "viewpoint":key_viewpoint}
+    
+    
+    return feed_dict_q, feed_dict_k, metadata
+
 
 
 class GQNDataset_pdisco(Dataset):
@@ -70,7 +105,7 @@ class GQNDataset_pdisco(Dataset):
 
     def __getitem__(self, idx, is_pickle=True):
         
-        # print(idx)
+        #print(idx)
 
         scene_num = idx // (self.views-1)
         key_img_view = (idx % (self.views-1)) + 1
@@ -97,12 +132,13 @@ class GQNDataset_pdisco(Dataset):
         query_image, key_image = images[0], images[key_img_view]
         query_viewpoint, key_viewpoint = viewpoints[0], viewpoints[key_img_view]
         
+        ###########################
         ## TO FIX - FOR ONE VIEW ##
-        tree_file = pickle.load(open(os.path.join("/home/mprabhud/dataset/clevr_veggies",data['tree_seq_filename']),"rb"))
-        tree,boxes,_,_ = bbox_rearrange(tree_file,boxes=[],classes={},all_classes=[])
-        boxes = np.stack(boxes)
-        num_boxes, _ = boxes.shape
-        
+#         tree_file = pickle.load(open(os.path.join("/home/mprabhud/dataset/clevr_veggies",data['tree_seq_filename']),"rb"))
+#         tree,boxes,_,_ = bbox_rearrange(tree_file,boxes=[],classes={},all_classes=[])
+#         boxes = np.stack(boxes)
+        num_boxes = np.random.randint(low=1, high=5) #boxes.shape
+        boxes = np.zeros([num_boxes, 6])
         ##########################
         
         pix_T_cams_raw = np.stack((data['pix_T_cams_raw'][0], data['pix_T_cams_raw'][key_img_view]))
@@ -115,11 +151,11 @@ class GQNDataset_pdisco(Dataset):
         origin_T_camXs_raw = np.stack((data['origin_T_camXs_raw'][0], data['origin_T_camXs_raw'][key_img_view]))
         
         
-        metadata = {"query_img_boxes":torch.tensor(boxes).cuda(), "key_img_boxes":torch.tensor(boxes
-                                                                                              ).cuda(), "scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda()}
-        # metadata = {}
-        # metadata = {"bbox_origin":torch.tensor(bbox_origin), "score":torch.tensor(score.astype(np.float32)), "pix_T_cams_raw":torch.tensor(pix_T_cams_raw), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw)}
-        return query_image, key_image, query_viewpoint, key_viewpoint, metadata
+#         metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda()}
+#         feed_dict_q = {"images":query_image, "objects":num_boxes, "objects_boxes":torch.tensor(boxes).cuda(), "viewpoint":query_viewpoint}
+#         feed_dict_k = {"images":key_image, "objects":num_boxes, "objects_boxes":torch.tensor(boxes).cuda(), "viewpoint":key_viewpoint}
+        return torch.tensor(query_image), num_boxes, torch.tensor(boxes), torch.tensor(query_viewpoint), torch.tensor(key_image), num_boxes, torch.tensor(boxes), torch.tensor(key_viewpoint), scene_num, key_img_view, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw), torch.tensor(origin_T_camXs_raw)
+
 
 
 
@@ -128,7 +164,7 @@ if __name__ == '__main__':
 	
 	train_dataset = GQNDataset_pdisco(root_dir='/home/mprabhud/dataset/clevr_veggies/npys/be_lt.txt')
 	from torch.utils.data import DataLoader
-	train_loader = DataLoader(train_dataset, batch_size=5, shuffle=True)
+	train_loader = DataLoader(train_dataset, batch_size=5, shuffle=True, collate_fn=collate_boxes)
 
 	for b in train_loader:
 	    query_image, key_image, query_viewpoint, key_viewpoint, metadata = b
