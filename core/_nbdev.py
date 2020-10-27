@@ -2,9 +2,11 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"SceneGraph": "scene_graph.ipynb"}
+index = {"Model": "Model.ipynb",
+         "SceneGraph": "Scene-graph.ipynb"}
 
-modules = ["scene_graph/scene_graph.py"]
+modules = ["model/main.py",
+           "scene_graph/scene_graph.py"]
 
 doc_url = "https://sakshamjindal.github.io/core/"
 
