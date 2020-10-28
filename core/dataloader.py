@@ -144,8 +144,8 @@ class GQNDataset_pdisco(Dataset):
         key_image = key_image.reshape(1,1,3,H_orig,W_orig)
         boxes_k = utils_disco.get_bounding_boxes(torch.tensor(key_image), boxes, camXs_T_origin_k, pix_T_camXs_k, num_boxes)
 
-        images = images.permute(0,2,3,1)
-        query_image, key_image = images[0,:,:,:3], images[key_img_view,:,:,:3]
+        #images = images.permute(0,2,3,1)
+        query_image, key_image = images[0,:3,:,:], images[key_img_view,:3,:,:]
         query_viewpoint, key_viewpoint = viewpoints[0], viewpoints[key_img_view]
         
         pix_T_cams_raw = np.stack((data['pix_T_cams_raw'][0], data['pix_T_cams_raw'][key_img_view]))
@@ -173,9 +173,9 @@ if __name__ == '__main__':
 	    query_image, key_image, query_viewpoint, key_viewpoint, metadata = b
 	    break
 
-	f, axarr = plt.subplots(5,2)
-	for row in range(5):
-	    axarr[row,0].imshow(query_image[row])
-	    axarr[row,1].imshow(key_image[row])
+    f, axarr = plt.subplots(5,2)
+    for row in range(5):
+        axarr[row,0].imshow(feed_dict_q['images'][row].permute(1,2,0))
+        axarr[row,1].imshow(feed_dict_k['images'][row].permute(1,2,0))
 
 
