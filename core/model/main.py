@@ -74,7 +74,7 @@ class Model(nn.Module):
 
             ### To Do : Write some assertion test : (Saksham)
 
-            return scene_embeddings
+        return scene_embeddings
 
     @staticmethod
     def do_viewpoint_transformation(scene_embeddings):
@@ -87,7 +87,7 @@ class Model(nn.Module):
             # Do viewpoint transformation on spatial embeddings
             scene_embeddings[ind][1] = spatial_view_point_transformation_layer(scene_embeddings_k[ind][1])
 
-            return scene_embeddings
+        return scene_embeddings
 
     def reset_parameters(self):
         pass
