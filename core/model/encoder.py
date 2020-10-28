@@ -15,6 +15,15 @@ class Encoder(nn.Module):
     def __init__(self, dim = 256):
         super().__init__()
 
+        """
+        Input:
+            dim : final number of dimensions of the node and spatial embeddings
+
+        Returns:
+            Intialises a model which has node embeddimgs and spatial embeddings
+        """
+
+
         self.dim = dim
         self.resnet = resnet34(pretrained=True)
         self.feature_extractor = nn.Sequential(*list(self.resnet.children())[:-3])
@@ -25,16 +34,24 @@ class Encoder(nn.Module):
 
 
     def forward(self,feed_dict):
-
+        """
+        Input:
+            feed_dict: a dictionary containing list tensors containing images and bounding box data.
+            Each element of the feed_dict corresponds to one elment of the batch.
+            Inside each batch are contained ["image": Image tensor,
+                                             "boxes":Bounding box tensor,
+                                             bounding box
+                                            ]
+        """
         num_batch = feed_dict["images"].shape[0]
-        num_total_nodes = feed_dict["objects_length"].sum().item()
+        num_total_nodes = feed_dict["objects"].sum().item()
 
         image_features = self.feature_extractor(feed_dict["images"])
-        outputs = self.scene_graph(image_features, feed_dict["objects"], feed_dict["objects_length"])
+        outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"])
 
-        node_features = output[0][0]
+        node_features = outputs[0][0]
         for num in range(1,num_batch):
-            node_features = torch.cat([node_features, output[num][0]], dim =0)
+            node_features = torch.cat([node_features, outputs[num][0]], dim =0)
 
         # To be implemented
         spatial_features = None

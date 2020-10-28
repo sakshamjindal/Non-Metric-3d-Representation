@@ -49,7 +49,7 @@ class Model(nn.Module):
 
     def get_scene_graph(self,feed_dict):
         image_features = self.feature_extractor(feed_dict["image"])
-        outputs = self.scene_graph(image_features, feed_dict["objects"], feed_dict["objects_length"])
+        outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"])
 
         return outputs
 
