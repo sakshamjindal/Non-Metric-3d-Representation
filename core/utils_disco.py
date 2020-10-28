@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import ipdb 
 st = ipdb.set_trace
+
 def rotm2eul(r):
     # r is Bx3x3
     r00 = r[:,0,0]
