@@ -10,7 +10,7 @@ from torchvision.transforms import ToTensor, Resize
 from torch.utils.data import Dataset
 import random
 import pickle
-import utils_disco
+import core.utils_disco as utils_disco
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
@@ -128,7 +128,7 @@ class GQNDataset_pdisco(Dataset):
         query_image, key_image = images[0,:3,:,:], images[key_img_view,:3,:,:]
         
         tree_file = pickle.load(open(os.path.join("/home/mprabhud/dataset/clevr_veggies",data['tree_seq_filename']),"rb"))
-        tree,boxes,_,_ = bbox_rearrange(tree_file,boxes=[],classes={},all_classes=[])
+        tree,boxes,_,_ = self.bbox_rearrange(tree_file,boxes=[],classes={},all_classes=[])
         boxes = np.stack(boxes)
         num_boxes, _ = boxes.shape
         boxes = boxes.reshape(1,1,num_boxes,2,3)
