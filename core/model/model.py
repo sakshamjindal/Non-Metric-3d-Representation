@@ -130,7 +130,7 @@ class MoCo(nn.Module):
 
         return x_gather[idx_this]
 
-    def forward(self, feed_dict_q, feed_dict_k=None, is_eval=False, cluster_result=None, index=None):
+    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None):
         """
         Input:
             feed_dict_q: a batch of query images and bounding boxes
