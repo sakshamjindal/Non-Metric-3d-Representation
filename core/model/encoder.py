@@ -4,10 +4,10 @@ __all__ = ['Encoder']
 
 # Cell
 
-from ..scene_graph.scene_graph import SceneGraph
-from torchvision.models import resnet34
 import torch.nn as nn
 import torch
+from ..scene_graph.scene_graph import SceneGraph
+from torchvision.models import resnet34
 
 # Cell
 
@@ -23,7 +23,6 @@ class Encoder(nn.Module):
             Intialises a model which has node embeddimgs and spatial embeddings
         """
 
-
         self.dim = dim
         self.resnet = resnet34(pretrained=True)
         self.feature_extractor = nn.Sequential(*list(self.resnet.children())[:-3])
@@ -32,8 +31,88 @@ class Encoder(nn.Module):
                                  output_dims=[self.dim,self.dim],
                                  downsample_rate=16)
 
+        self.node_viewpoint_transformation = nn.Sequential(nn.Linear(263,512),
+                                                nn.ReLU(),
+                                                nn.Linear(512,self.dim))
 
-    def forward(self,feed_dict):
+        self.spatial_viewpoint_transformation = nn.Sequential(nn.Linear(263,512),
+                                                        nn.ReLU(),
+                                                        nn.Linear(512,self.dim))
+
+    def merge_pose_with_scene_embeddings(self,
+                                     scene_embeddings,
+                                     view=None,
+                                     transform_node=True,
+                                     transform_spatial=False):
+        '''
+        Input
+            scene_embeddings: output of scene_graph module. A list of of tensors containing node and
+                              spatial embeddings of each batch element
+            view : a tensor of size [batch, 1, 7] containing information of relative egomotion
+                   between the two camera viewpoints
+            transform_node and transform spatial: boolean flags whether to do any transformation on nodes or not
+        Output
+            scene_embeddings: concatenated with pose vectors
+        '''
+
+        if view is None:
+            raise NotImplementedError("Wrong Implementation")
+
+        for batch_ind,(node_embeddings, spatial_embeddings) in enumerate(scene_embeddings):
+
+            if transform_node:
+                print("Node: Pose with Node Concat :  Batch Ind: {}".format(batch_ind))
+                num_objects = node_embeddings.shape[0]
+                # Broadcast view to visual embedding dimension
+                view_visual = view[batch_ind].repeat(num_objects,1)
+                # Concatenate with visual embeddings
+                pose_with_features = torch.cat((view_visual,node_embeddings), dim=1)
+                # Reassign the scene embeddings
+                scene_embeddings[batch_ind][0] = pose_with_features
+
+            if transform_spatial:
+                num_obj_x = spatial_embeddings.shape[0]
+                num_obj_y = spatial_embeddings.shape[1]
+
+                # Broadcast view to spatial embedding dimension
+                view_spatial = view[batch_ind].unsqueeze(0).repeat(num_obj_x, num_obj_y, 1)
+                # Concatenate with visual embeddings
+                pose_with_features = torch.cat((view_spatial,spatial_embeddings), dim=2)
+                # Reassign the scene embeddings
+                scene_embeddings[batch_ind][1] = pose_with_features
+
+            ### To Do : Write some assertion test : (Saksham)
+
+        return scene_embeddings
+
+    def do_viewpoint_transformation(self,
+                                    scene_embeddings,
+                                    transform_node=True,
+                                    transform_spatial=False):
+
+        '''
+        Input:
+            scene_embeddings: output of scene_graph module concatenated with pose. A list of of tensors containing node and
+                              spatial embeddings of each batch element
+            transform_node and transform spatial: boolean flags whether to do any transformation on nodes or not
+        Output:
+            scene_embeddings: viewpoint transformed embeddings
+        '''
+
+        for ind,(node_embeddings, spatial_embeddings) in enumerate(scene_embeddings):
+            if transform_node:
+                print("Node: Transformation:  Batch Ind: {}".format(ind))
+                # Do viewpoint transformation on visual embeddings
+                scene_embeddings[ind][0] = self.node_viewpoint_transformation(scene_embeddings[ind][0])
+
+            if transform_spatial:
+                # Do viewpoint transformation on spatial embeddings
+                scene_embeddings[ind][1] = self.spatial_viewpoint_transformation(scene_embeddings[ind][1])
+
+        return scene_embeddings
+
+
+    def forward(self,feed_dict, rel_viewpoint=None):
         """
         Input:
             feed_dict: a dictionary containing list tensors containing images and bounding box data.
@@ -48,6 +127,11 @@ class Encoder(nn.Module):
 
         image_features = self.feature_extractor(feed_dict["images"])
         outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"])
+
+        if rel_viewpoint is not None:
+            print("Viewpoint Transformation of Node feature vectors")
+            outputs = self.merge_pose_with_scene_embeddings(outputs,rel_viewpoint, True, False)
+            outputs = self.do_viewpoint_transformation(outputs, True, False)
 
         node_features = outputs[0][0]
         for num in range(1,num_batch):
