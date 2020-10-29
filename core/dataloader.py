@@ -163,19 +163,19 @@ class GQNDataset_pdisco(Dataset):
 
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 	
-	train_dataset = GQNDataset_pdisco(root_dir='/home/mprabhud/dataset/clevr_veggies/npys/be_lt.txt')
-	from torch.utils.data import DataLoader
-	train_loader = DataLoader(train_dataset, batch_size=5, shuffle=True, collate_fn=collate_boxes)
+# 	train_dataset = GQNDataset_pdisco(root_dir='/home/mprabhud/dataset/clevr_veggies/npys/be_lt.txt')
+# 	from torch.utils.data import DataLoader
+# 	train_loader = DataLoader(train_dataset, batch_size=5, shuffle=True, collate_fn=collate_boxes)
 
-	for b in train_loader:
-	    query_image, key_image, query_viewpoint, key_viewpoint, metadata = b
-	    break
+# 	for b in train_loader:
+# 	    query_image, key_image, query_viewpoint, key_viewpoint, metadata = b
+# 	    break
 
-    f, axarr = plt.subplots(5,2)
-    for row in range(5):
-        axarr[row,0].imshow(feed_dict_q['images'][row].permute(1,2,0))
-        axarr[row,1].imshow(feed_dict_k['images'][row].permute(1,2,0))
+#     f, axarr = plt.subplots(5,2)
+#     for row in range(5):
+#         axarr[row,0].imshow(feed_dict_q['images'][row].permute(1,2,0))
+#         axarr[row,1].imshow(feed_dict_k['images'][row].permute(1,2,0))
 
 

@@ -2,10 +2,15 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"Model": "Model.ipynb",
+index = {"Encoder": "Encoder.ipynb",
+         "MoCo": "MoCo.ipynb",
+         "concat_all_gather": "MoCo.ipynb",
+         "Model": "Model.ipynb",
          "SceneGraph": "Scene-graph.ipynb"}
 
-modules = ["model/main.py",
+modules = ["model/encoder.py",
+           "model/model.py",
+           "model/main.py",
            "scene_graph/scene_graph.py"]
 
 doc_url = "https://sakshamjindal.github.io/core/"
