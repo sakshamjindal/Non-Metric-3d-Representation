@@ -147,6 +147,8 @@ class MoCo(nn.Module):
             k = nn.functional.normalize(k, dim=1)
             return k
 
+        rel_viewpoint = metadata["rel_viewpoint"]
+
         # compute key features
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()  # update the key encoder
@@ -154,7 +156,7 @@ class MoCo(nn.Module):
 #             # shuffle for making use of BN
 #             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            _, k, __ = self.encoder_k(feed_dict_k)  # keys: NxC
+            _, k, __ = self.encoder_k(feed_dict_k, rel_viewpoint)  # keys: NxC
             k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
 
 #             # undo shuffle
