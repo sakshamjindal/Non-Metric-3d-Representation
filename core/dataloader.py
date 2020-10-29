@@ -18,7 +18,7 @@ import ipdb
 st = ipdb.set_trace
 
 def collate_boxes(data):
-    query_image, num_boxes_q, boxes_q, query_viewpoint, key_image, num_boxes_k, boxes_k, key_viewpoint, scene_num, key_img_view, pix_T_cams_raw, camR_T_origin_raw, origin_T_camXs_raw = zip(*data)
+    query_image, num_boxes_q, boxes_q, key_image, num_boxes_k, boxes_k, scene_num, key_img_view, pix_T_cams_raw, camR_T_origin_raw, origin_T_camXs_raw, gt_egomotion = zip(*data)
     batch_size = len(num_boxes_q)
     
 #     print(torch.stack(list(query_image)))
@@ -35,19 +35,17 @@ def collate_boxes(data):
     object_boxes_q = torch.cat(boxes_q, dim=0)
     object_boxes_k = torch.cat(boxes_k, dim=0)
     
-    query_viewpoint = torch.stack(list(query_viewpoint))
-    key_viewpoint = torch.stack(list(key_viewpoint))
-    
     scene_num = (list(scene_num))
     key_img_view = (list(key_img_view))
     pix_T_cams_raw = torch.stack(list(pix_T_cams_raw), dim=0)
-    camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), axis=0)
-    origin_T_camXs_raw = torch.stack(list(origin_T_camXs_raw), axis=0)
+    camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), dim=0)
+    origin_T_camXs_raw = torch.stack(list(origin_T_camXs_raw), dim=0)
+    gt_egomotion = torch.stack(list(gt_egomotion), dim=0)
     
     
-    metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda()}
-    feed_dict_q = {"images":query_image, "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda(), "view":query_viewpoint}
-    feed_dict_k = {"images":key_image, "objects":num_boxes_k, "objects_boxes":torch.tensor(object_boxes_k).cuda(), "view":key_viewpoint}
+    metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda(), "rel_viewpoint":torch.tensor(gt_egomotion).cuda()}
+    feed_dict_q = {"images":query_image, "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda()}
+    feed_dict_k = {"images":key_image, "objects":num_boxes_k, "objects_boxes":torch.tensor(object_boxes_k).cuda()}
     
     
     return feed_dict_q, feed_dict_k, metadata
@@ -113,15 +111,22 @@ class GQNDataset_pdisco(Dataset):
         scene_path = self.all_files[scene_num]
         data = pickle.load(open(scene_path, "rb"))
         
-        viewpoints = torch.tensor(data['origin_T_camXs_raw'])
+        #gt egomotion
+        '''
+        matmul(query_camX_T_origin, target_camX_T_origin.inverse())
+        '''
+        
+        query_camX_T_origin = torch.tensor(data['origin_T_camXs_raw'][0]).reshape(1,4,4)
+        origin_T_camX_target = utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][1]).reshape(1, 4, 4))
+        viewpoints = torch.matmul(query_camX_T_origin, origin_T_camX_target)
         
         rx, ry, rz = utils_disco.rotm2eul(viewpoints)
         rx, ry, rz = rx.unsqueeze(1), ry.unsqueeze(1), rz.unsqueeze(1)
         xyz = viewpoints[:, :3, -1]
 
-                
+
         view_vector = [xyz, torch.cos(rx), torch.sin(rx), torch.cos(rz), torch.sin(rz)]
-        viewpoints = torch.cat(view_vector, dim=-1)
+        rel_viewpoint = torch.cat(view_vector, dim=-1)
         
         images = torch.tensor(data['rgb_camXs_raw']).permute(0,3,1,2)/255.
         _, _, H_orig, W_orig = images.shape
@@ -146,7 +151,6 @@ class GQNDataset_pdisco(Dataset):
 
         #images = images.permute(0,2,3,1)
         query_image, key_image = images[0,:3,:,:], images[key_img_view,:3,:,:]
-        query_viewpoint, key_viewpoint = viewpoints[0], viewpoints[key_img_view]
         
         pix_T_cams_raw = np.stack((data['pix_T_cams_raw'][0], data['pix_T_cams_raw'][key_img_view]))
         # print("Pixt camXs shape: ", pix_T_cams_raw.shape)
@@ -157,7 +161,8 @@ class GQNDataset_pdisco(Dataset):
         camR_T_origin_raw = np.stack((data['camR_T_origin_raw'][0], data['camR_T_origin_raw'][key_img_view]))
         origin_T_camXs_raw = np.stack((data['origin_T_camXs_raw'][0], data['origin_T_camXs_raw'][key_img_view]))
         
-        return torch.tensor(query_image), num_boxes, torch.tensor(boxes_q), torch.tensor(query_viewpoint), torch.tensor(key_image), num_boxes, torch.tensor(boxes_k), torch.tensor(key_viewpoint), scene_num, key_img_view, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw), torch.tensor(origin_T_camXs_raw)
+        return torch.tensor(query_image), num_boxes, torch.tensor(boxes_q), torch.tensor(key_image), num_boxes, torch.tensor(boxes_k), scene_num, key_img_view, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw), torch.tensor(origin_T_camXs_raw), torch.tensor(rel_viewpoint)
+
 
 
 
