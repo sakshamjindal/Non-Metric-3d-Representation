@@ -35,8 +35,8 @@ def collate_boxes(data):
     object_boxes_q = torch.cat(boxes_q, dim=0)
     object_boxes_k = torch.cat(boxes_k, dim=0)
     
-    scene_num = (list(scene_num))
-    key_img_view = (list(key_img_view))
+    scene_num = torch.tensor(list(scene_num))
+    key_img_view = torch.tensor(list(key_img_view))
     pix_T_cams_raw = torch.stack(list(pix_T_cams_raw), dim=0)
     camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), dim=0)
     origin_T_camXs_raw = torch.stack(list(origin_T_camXs_raw), dim=0)
@@ -44,8 +44,8 @@ def collate_boxes(data):
     
     
     metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda(), "rel_viewpoint":torch.tensor(gt_egomotion).cuda()}
-    feed_dict_q = {"images":query_image, "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda()}
-    feed_dict_k = {"images":key_image, "objects":num_boxes_k, "objects_boxes":torch.tensor(object_boxes_k).cuda()}
+    feed_dict_q = {"images":torch.tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda()}
+    feed_dict_k = {"images":torch.tensor(key_image).cuda(), "objects":num_boxes_k, "objects_boxes":torch.tensor(object_boxes_k).cuda()}
     
     
     return feed_dict_q, feed_dict_k, metadata
