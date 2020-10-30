@@ -6,15 +6,14 @@ index = {"Encoder": "Encoder.ipynb",
          "MoCo": "MoCo.ipynb",
          "concat_all_gather": "MoCo.ipynb",
          "SceneGraph": "Scene-graph.ipynb",
-         "parser": "train_model.ipynb",
          "setup_tb": "train_model.ipynb",
-         "main": "train_model.ipynb",
+         "run_training": "train_model.ipynb",
          "train": "train_model.ipynb"}
 
 modules = ["model/encoder.py",
            "model/model.py",
            "scene_graph/scene_graph.py",
-           "train.py"]
+           "trainer.py"]
 
 doc_url = "https://sakshamjindal.github.io/core/"
 
