@@ -71,6 +71,8 @@ def run_training(args):
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
+    args.num_cluster = args.num_cluster.split(',')
+
     if not os.path.exists(args.exp_dir):
         os.mkdir(args.exp_dir)
     if not os.path.exists(os.path.join('../tb_logs',args.exp_dir)):
@@ -137,8 +139,8 @@ def run_training(args):
             # placeholder for clustering result
             cluster_result = {'im2cluster':[],'centroids':[],'density':[]}
             for num_cluster in args.num_cluster:
-                cluster_result['im2cluster'].append(torch.zeros(len(eval_dataset),dtype=torch.long).cuda())
-                cluster_result['centroids'].append(torch.zeros(int(num_cluster),args.low_dim).cuda())
+                cluster_result['im2cluster'].append(torch.zeros(len(kmeans_train_dataset),dtype=torch.long).cuda())
+                cluster_result['centroids'].append(torch.zeros(int(num_cluster),256).cuda())
                 cluster_result['density'].append(torch.zeros(int(num_cluster)).cuda())
 
             features[torch.norm(features,dim=1)>1.5] /= 2 #account for the few samples that are computed twice
@@ -149,9 +151,9 @@ def run_training(args):
 
         adjust_learning_rate(optimizer, epoch, args)
 
-        # train for one epoch
+
         train(moco_train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger)
-        break
+
         if (epoch+1)%5==0:
             save_checkpoint({
                 'epoch': epoch + 1,
@@ -219,7 +221,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
 
         if i % args.print_freq == 0:
             progress.display(i)
-        break
 
     print("Logging to TB....")
     tb_logger.add_scalar('Train Acc Inst', acc_inst.avg, epoch)

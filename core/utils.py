@@ -2,15 +2,16 @@ import torch
 import torch.nn as nn
 import numpy as np
 import faiss
+from tqdm import tqdm
 
 def compute_features(eval_loader, model, args):
     print('Computing features...')
     model.eval()
-    features = torch.zeros(len(eval_loader.dataset),args.low_dim).cuda()
+    features = torch.zeros(len(eval_loader.dataset),256).cuda()
     for i, (feed_dict_q, metadata) in enumerate(tqdm(eval_loader)):
         with torch.no_grad():
             feat = model(feed_dict_q, None, metadata, is_eval=True)
-            index = metadata['scene_num']
+            index = metadata['scene_number']
             features[index] = feat    
     return features.cpu()
 
@@ -96,10 +97,11 @@ def run_kmeans(x, args):
         x: data to be clustered
     """
     
-    print('performing kmeans clustering')
+    
     results = {'im2cluster':[],'centroids':[],'density':[]}
     
     for seed, num_cluster in enumerate(args.num_cluster):
+        print('performing kmeans clustering on ...',num_cluster)
         # intialize faiss clustering parameters
         d = x.shape[1]
         k = int(num_cluster)
@@ -112,9 +114,10 @@ def run_kmeans(x, args):
         clus.min_points_per_centroid = 10
 
         res = faiss.StandardGpuResources()
+
         cfg = faiss.GpuIndexFlatConfig()
         cfg.useFloat16 = False
-        cfg.device = args.gpu    
+        cfg.device = 0   
         index = faiss.GpuIndexFlatL2(res, d, cfg)  
 
         clus.train(x, index)   

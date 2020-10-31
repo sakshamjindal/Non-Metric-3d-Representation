@@ -19,7 +19,7 @@ class MoCo(nn.Module):
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder=None, dim=256, r=16384, m=0.999, T=0.1, mlp=False):
+    def __init__(self, base_encoder=None, dim=256, r=32, m=0.999, T=0.1, mlp=False):
         """
         dim: feature dimension (default: 128)
         r: queue size; number of negative samples/prototypes (default: 16384)
@@ -143,7 +143,7 @@ class MoCo(nn.Module):
             logits, targets, proto_logits, proto_targets
         """
 
-        rel_viewpoint = metadata["rel_viewpoint"]
+
 
         if mode=="node":
             rel_viewpoint=None
@@ -152,6 +152,11 @@ class MoCo(nn.Module):
             _, k = self.encoder_k(feed_dict_q, mode)
             k = nn.functional.normalize(k, dim=1)
             return k
+
+        rel_viewpoint = metadata["rel_viewpoint"]
+
+        if mode=="node":
+            rel_viewpoint=None
 
         # compute key features
         with torch.no_grad():  # no gradient to keys

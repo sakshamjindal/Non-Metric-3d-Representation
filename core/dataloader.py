@@ -31,8 +31,8 @@ def collate_boxes(data):
     key_image = torch.stack(list(key_image))
     
  
-    num_boxes_q = torch.tensor(list(num_boxes_q))
-    num_boxes_k = torch.tensor(list(num_boxes_k))
+    num_boxes_q = torch.as_tensor(list(num_boxes_q))
+    num_boxes_k = torch.as_tensor(list(num_boxes_k))
     
     boxes_q = list(boxes_q)
     boxes_k = list(boxes_k)
@@ -40,17 +40,17 @@ def collate_boxes(data):
     object_boxes_q = torch.cat(boxes_q, dim=0)
     object_boxes_k = torch.cat(boxes_k, dim=0)
     
-    scene_num = torch.tensor(list(scene_num))
-    key_img_view = torch.tensor(list(key_img_view))
+    scene_num = torch.as_tensor(list(scene_num))
+    key_img_view = torch.as_tensor(list(key_img_view))
     pix_T_cams_raw = torch.stack(list(pix_T_cams_raw), dim=0)
     camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), dim=0)
     origin_T_camXs_raw = torch.stack(list(origin_T_camXs_raw), dim=0)
     gt_egomotion = torch.stack(list(gt_egomotion), dim=0)
     
     
-    metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.tensor(origin_T_camXs_raw).cuda(), "rel_viewpoint":torch.tensor(gt_egomotion).cuda()}
-    feed_dict_q = {"images":torch.tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda()}
-    feed_dict_k = {"images":torch.tensor(key_image).cuda(), "objects":num_boxes_k, "objects_boxes":torch.tensor(object_boxes_k).cuda()}
+    metadata = {"scene_number":scene_num, "key_image_index":key_img_view, "pix_T_cams_raw":torch.as_tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.as_tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.as_tensor(origin_T_camXs_raw).cuda(), "rel_viewpoint":torch.as_tensor(gt_egomotion).cuda()}
+    feed_dict_q = {"images":torch.as_tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.as_tensor(object_boxes_q).cuda()}
+    feed_dict_k = {"images":torch.as_tensor(key_image).cuda(), "objects":num_boxes_k, "objects_boxes":torch.as_tensor(object_boxes_k).cuda()}
     
     
     return feed_dict_q, feed_dict_k, metadata
@@ -123,8 +123,8 @@ class CLEVR_train(Dataset):
         matmul(query_camX_T_origin, target_camX_T_origin.inverse())
         '''
         
-        query_camX_T_origin = torch.tensor(data['origin_T_camXs_raw'][0]).reshape(1,4,4)
-        origin_T_camX_target = utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][1]).reshape(1, 4, 4))
+        query_camX_T_origin = torch.as_tensor(data['origin_T_camXs_raw'][0]).reshape(1,4,4)
+        origin_T_camX_target = utils_disco.safe_inverse(torch.as_tensor(data['origin_T_camXs_raw'][1]).reshape(1, 4, 4))
         viewpoints = torch.matmul(query_camX_T_origin, origin_T_camX_target)
         
         rx, ry, rz = utils_disco.rotm2eul(viewpoints)
@@ -135,7 +135,7 @@ class CLEVR_train(Dataset):
         view_vector = [xyz, torch.cos(rx), torch.sin(rx), torch.cos(rz), torch.sin(rz)]
         rel_viewpoint = torch.cat(view_vector, dim=-1)
         
-        images = torch.tensor(data['rgb_camXs_raw']).permute(0,3,1,2)/255.
+        images = torch.as_tensor(data['rgb_camXs_raw']).permute(0,3,1,2)/255.
         _, _, H_orig, W_orig = images.shape
         query_image, key_image = images[0,:3,:,:], images[key_img_view,:3,:,:]
         
@@ -147,17 +147,17 @@ class CLEVR_train(Dataset):
         boxes = np.stack(boxes)
         num_boxes, _ = boxes.shape
         boxes = boxes.reshape(1,1,num_boxes,2,3)
-        boxes = torch.tensor(boxes).cuda()
+        boxes = torch.as_tensor(boxes).cuda()
         
-        camXs_T_origin_q =  utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][0]).reshape(1, 4, 4)).unsqueeze(1).cuda()
-        pix_T_camXs_q = torch.tensor(data['pix_T_cams_raw'][0]).reshape(1,1,4,4).cuda()
+        camXs_T_origin_q =  utils_disco.safe_inverse(torch.as_tensor(data['origin_T_camXs_raw'][0]).reshape(1, 4, 4)).unsqueeze(1).cuda()
+        pix_T_camXs_q = torch.as_tensor(data['pix_T_cams_raw'][0]).reshape(1,1,4,4).cuda()
         query_image = query_image.reshape(1,1,3,H_orig,W_orig)
-        boxes_q = utils_disco.get_bounding_boxes(torch.tensor(query_image), boxes, camXs_T_origin_q, pix_T_camXs_q, num_boxes)
+        boxes_q = utils_disco.get_bounding_boxes(torch.as_tensor(query_image), boxes, camXs_T_origin_q, pix_T_camXs_q, num_boxes)
         
-        camXs_T_origin_k =  utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][key_img_view]).reshape(1, 4, 4)).unsqueeze(1).cuda()
-        pix_T_camXs_k = torch.tensor(data['pix_T_cams_raw'][key_img_view]).reshape(1,1,4,4).cuda()
+        camXs_T_origin_k =  utils_disco.safe_inverse(torch.as_tensor(data['origin_T_camXs_raw'][key_img_view]).reshape(1, 4, 4)).unsqueeze(1).cuda()
+        pix_T_camXs_k = torch.as_tensor(data['pix_T_cams_raw'][key_img_view]).reshape(1,1,4,4).cuda()
         key_image = key_image.reshape(1,1,3,H_orig,W_orig)
-        boxes_k = utils_disco.get_bounding_boxes(torch.tensor(key_image), boxes, camXs_T_origin_k, pix_T_camXs_k, num_boxes)
+        boxes_k = utils_disco.get_bounding_boxes(torch.as_tensor(key_image), boxes, camXs_T_origin_k, pix_T_camXs_k, num_boxes)
 
         #images = images.permute(0,2,3,1)
         query_image, key_image = images[0,:3,:,:], images[key_img_view,:3,:,:]
@@ -165,13 +165,14 @@ class CLEVR_train(Dataset):
         pix_T_cams_raw = np.stack((data['pix_T_cams_raw'][0], data['pix_T_cams_raw'][key_img_view]))
         # print("Pixt camXs shape: ", pix_T_cams_raw.shape)
         if not self.few_shot:
-            pix_T_cams_raw = utils_disco.scale_intrinsics(torch.tensor(pix_T_cams_raw), self.target_res/(1.*W_orig), self.target_res/(1.*H_orig))
+            pix_T_cams_raw = utils_disco.scale_intrinsics(torch.as_tensor(pix_T_cams_raw), self.target_res/(1.*W_orig), self.target_res/(1.*H_orig))
         
         
         camR_T_origin_raw = np.stack((data['camR_T_origin_raw'][0], data['camR_T_origin_raw'][key_img_view]))
         origin_T_camXs_raw = np.stack((data['origin_T_camXs_raw'][0], data['origin_T_camXs_raw'][key_img_view]))
         
-        return torch.tensor(query_image), num_boxes, torch.tensor(boxes_q), torch.tensor(key_image), num_boxes, torch.tensor(boxes_k), scene_num, key_img_view, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw), torch.tensor(origin_T_camXs_raw), torch.tensor(rel_viewpoint)
+        return torch.as_tensor(query_image), num_boxes, torch.as_tensor(boxes_q), torch.as_tensor(key_image), num_boxes, torch.as_tensor(boxes_k), scene_num, key_img_view, torch.as_tensor(pix_T_cams_raw), torch.as_tensor(camR_T_origin_raw), torch.as_tensor(origin_T_camXs_raw), torch.as_tensor(rel_viewpoint)
+
 
     
 ###############################################
@@ -185,19 +186,19 @@ def collate_boxes_onlyquery(data):
 #     print(torch.stack(list(query_image)))
     query_image = torch.stack(list(query_image))
     
-    num_boxes_q = torch.tensor(list(num_boxes_q))
+    num_boxes_q = torch.as_tensor(list(num_boxes_q))
     
     boxes_q = list(boxes_q)
  
     object_boxes_q = torch.cat(boxes_q, dim=0)
     
-    scene_num = torch.tensor(list(scene_num))
+    scene_num = torch.as_tensor(list(scene_num))
     pix_T_cams_raw = torch.stack(list(pix_T_cams_raw), dim=0)
     camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), dim=0)
     
     
-    metadata = {"scene_number":scene_num, "pix_T_cams_raw":torch.tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.tensor(camR_T_origin_raw).cuda()}
-    feed_dict_q = {"images":torch.tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.tensor(object_boxes_q).cuda()}
+    metadata = {"scene_number":scene_num, "pix_T_cams_raw":torch.as_tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.as_tensor(camR_T_origin_raw).cuda()}
+    feed_dict_q = {"images":torch.as_tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.as_tensor(object_boxes_q).cuda()}
     
     return feed_dict_q, metadata
 
@@ -260,7 +261,7 @@ class CLEVR_train_onlyquery(Dataset):
         #gt egomotion
 
         
-        images = torch.tensor(data['rgb_camXs_raw']).permute(0,3,1,2)/255.
+        images = torch.as_tensor(data['rgb_camXs_raw']).permute(0,3,1,2)/255.
         _, _, H_orig, W_orig = images.shape
         query_image = images[0,:3,:,:]
         
@@ -272,12 +273,12 @@ class CLEVR_train_onlyquery(Dataset):
         boxes = np.stack(boxes)
         num_boxes, _ = boxes.shape
         boxes = boxes.reshape(1,1,num_boxes,2,3)
-        boxes = torch.tensor(boxes).cuda()
+        boxes = torch.as_tensor(boxes).cuda()
         
-        camXs_T_origin_q =  utils_disco.safe_inverse(torch.tensor(data['origin_T_camXs_raw'][0]).reshape(1, 4, 4)).unsqueeze(1).cuda()
-        pix_T_camXs_q = torch.tensor(data['pix_T_cams_raw'][0]).reshape(1,1,4,4).cuda()
+        camXs_T_origin_q =  utils_disco.safe_inverse(torch.as_tensor(data['origin_T_camXs_raw'][0]).reshape(1, 4, 4)).unsqueeze(1).cuda()
+        pix_T_camXs_q = torch.as_tensor(data['pix_T_cams_raw'][0]).reshape(1,1,4,4).cuda()
         query_image = query_image.reshape(1,1,3,H_orig,W_orig)
-        boxes_q = utils_disco.get_bounding_boxes(torch.tensor(query_image), boxes, camXs_T_origin_q, pix_T_camXs_q, num_boxes)
+        boxes_q = utils_disco.get_bounding_boxes(torch.as_tensor(query_image), boxes, camXs_T_origin_q, pix_T_camXs_q, num_boxes)
         
         
         #images = images.permute(0,2,3,1)
@@ -290,7 +291,8 @@ class CLEVR_train_onlyquery(Dataset):
         camR_T_origin_raw = data['camR_T_origin_raw'][0]
         origin_T_camXs_raw = data['origin_T_camXs_raw'][0]
         
-        return torch.tensor(query_image), num_boxes, torch.tensor(boxes_q), scene_num, torch.tensor(pix_T_cams_raw), torch.tensor(camR_T_origin_raw)
+        return torch.as_tensor(query_image), num_boxes, torch.as_tensor(boxes_q), scene_num, torch.as_tensor(pix_T_cams_raw), torch.as_tensor(camR_T_origin_raw)
+
 
 
 
