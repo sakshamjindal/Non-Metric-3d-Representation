@@ -6,7 +6,7 @@ __all__ = ['Encoder']
 
 import torch.nn as nn
 import torch
-from ..scene_graph.scene_graph import SceneGraph
+from .scene_graph.scene_graph import SceneGraph
 from torchvision.models import resnet34
 
 # Cell
@@ -41,9 +41,7 @@ class Encoder(nn.Module):
 
     def merge_pose_with_scene_embeddings(self,
                                      scene_embeddings,
-                                     view=None,
-                                     transform_node=True,
-                                     transform_spatial=False):
+                                     view=None):
         '''
         Input
             scene_embeddings: output of scene_graph module. A list of of tensors containing node and
@@ -55,31 +53,18 @@ class Encoder(nn.Module):
             scene_embeddings: concatenated with pose vectors
         '''
 
-        if view is None:
-            raise NotImplementedError("Wrong Implementation")
+        for batch_ind,(_, spatial_embeddings) in enumerate(scene_embeddings):
+            print(batch_ind)
+            num_obj_x = spatial_embeddings.shape[0]
+            num_obj_y = spatial_embeddings.shape[1]
 
-        for batch_ind,(node_embeddings, spatial_embeddings) in enumerate(scene_embeddings):
-
-            if transform_node:
-                print("Node: Pose with Node Concat :  Batch Ind: {}".format(batch_ind))
-                num_objects = node_embeddings.shape[0]
-                # Broadcast view to visual embedding dimension
-                view_visual = view[batch_ind].repeat(num_objects,1)
-                # Concatenate with visual embeddings
-                pose_with_features = torch.cat((view_visual,node_embeddings), dim=1)
-                # Reassign the scene embeddings
-                scene_embeddings[batch_ind][0] = pose_with_features
-
-            if transform_spatial:
-                num_obj_x = spatial_embeddings.shape[0]
-                num_obj_y = spatial_embeddings.shape[1]
-
-                # Broadcast view to spatial embedding dimension
-                view_spatial = view[batch_ind].unsqueeze(0).repeat(num_obj_x, num_obj_y, 1)
-                # Concatenate with visual embeddings
-                pose_with_features = torch.cat((view_spatial,spatial_embeddings), dim=2)
-                # Reassign the scene embeddings
-                scene_embeddings[batch_ind][1] = pose_with_features
+            print("Adding pose to spatial embeddings")
+            # Broadcast view to spatial embedding dimension
+            view_spatial = view[batch_ind].unsqueeze(0).repeat(num_obj_x, num_obj_y, 1)
+            # Concatenate with visual embeddings
+            pose_with_features = torch.cat((view_spatial,spatial_embeddings), dim=2)
+            # Reassign the scene embeddings
+            scene_embeddings[batch_ind][1] = pose_with_features
 
             ### To Do : Write some assertion test : (Saksham)
 
@@ -98,21 +83,17 @@ class Encoder(nn.Module):
         Output:
             scene_embeddings: viewpoint transformed embeddings
         '''
-
-        for ind,(node_embeddings, spatial_embeddings) in enumerate(scene_embeddings):
-            if transform_node:
-                print("Node: Transformation:  Batch Ind: {}".format(ind))
-                # Do viewpoint transformation on visual embeddings
-                scene_embeddings[ind][0] = self.node_viewpoint_transformation(scene_embeddings[ind][0])
-
-            if transform_spatial:
-                # Do viewpoint transformation on spatial embeddings
-                scene_embeddings[ind][1] = self.spatial_viewpoint_transformation(scene_embeddings[ind][1])
+        for ind,(_, spatial_embeddings) in enumerate(scene_embeddings):
+            # Do viewpoint transformation on spatial embeddings
+            print("viewpoint transform on spatial embeddings")
+            scene_embeddings[ind][1] = self.spatial_viewpoint_transformation(scene_embeddings[ind][1])
 
         return scene_embeddings
 
-
-    def forward(self,feed_dict, rel_viewpoint=None):
+    def forward(self,
+                feed_dict,
+                mode="node",
+                rel_viewpoint=None):
         """
         Input:
             feed_dict: a dictionary containing list tensors containing images and bounding box data.
@@ -121,23 +102,31 @@ class Encoder(nn.Module):
                                              "boxes":Bounding box tensor,
                                              bounding box
                                             ]
+            mode: should be either 'node' or 'spatial' depending on what feature you want to extract
         """
         num_batch = feed_dict["images"].shape[0]
         num_total_nodes = feed_dict["objects"].sum().item()
 
         image_features = self.feature_extractor(feed_dict["images"])
-        outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"])
+        outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"], mode=mode)
 
-        if rel_viewpoint is not None:
-            print("Viewpoint Transformation of Node feature vectors")
-            outputs = self.merge_pose_with_scene_embeddings(outputs,rel_viewpoint, True, False)
-            outputs = self.do_viewpoint_transformation(outputs, True, False)
+        if mode=="node":
+            #Flatten the node embeddings
+            node_features = outputs[0][0]
+            for num in range(1,num_batch):
+                node_features = torch.cat([node_features, outputs[num][0]], dim =0)
 
-        node_features = outputs[0][0]
-        for num in range(1,num_batch):
-            node_features = torch.cat([node_features, outputs[num][0]], dim =0)
+            return outputs, node_features
 
-        # To be implemented
-        spatial_features = None
+        if mode=="spatial" and rel_viewpoint is not None:
+            print("Ading viewpoint information to spatial features")
+            outputs = self.merge_pose_with_scene_embeddings(outputs,rel_viewpoint)
+            outputs = self.do_viewpoint_transformation(outputs)
 
-        return outputs, node_features, spatial_features
+        #Flattent the spatial embeddings
+        spatial_features = outputs[0][1].reshape(-1,256)
+
+        for num in range(1, num_batch):
+            spatial_features = torch.cat([spatial_features, outputs[num][1].reshape(-1,256)], dim =0)
+
+        return outputs, spatial_features
