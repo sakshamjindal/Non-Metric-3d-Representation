@@ -35,7 +35,7 @@ from torch.utils.data import DataLoader
 # Cell
 
 from .model.model import MoCo
-from .dataloader import GQNDataset_pdisco, collate_boxes
+from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery
 from .utils import compute_features, run_kmeans, AverageMeter, ProgressMeter, adjust_learning_rate, accuracy, save_checkpoint
 
 # Cell
@@ -71,6 +71,8 @@ def run_training(args):
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
+    args.num_cluster = args.num_cluster.split(',')
+
     if not os.path.exists(args.exp_dir):
         os.mkdir(args.exp_dir)
     if not os.path.exists(os.path.join('../tb_logs',args.exp_dir)):
@@ -87,8 +89,12 @@ def run_training(args):
 
     print('==> Preparing data..')
 
-    train_dataset = GQNDataset_pdisco(root_dir='/home/mprabhud/dataset/clevr_veggies/npys/be_lt.txt')
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
+    moco_train_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
+    moco_train_loader = DataLoader(moco_train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
+
+    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
+    kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
+
 
     print('==> Making model..')
 
@@ -128,13 +134,13 @@ def run_training(args):
 
         if epoch>=args.warmup_epoch:
             # compute momentum features for center-cropped images
-            features = compute_features(eval_loader, model, args)
+            features = compute_features(kmeans_train_loader, model, args)
 
             # placeholder for clustering result
             cluster_result = {'im2cluster':[],'centroids':[],'density':[]}
             for num_cluster in args.num_cluster:
-                cluster_result['im2cluster'].append(torch.zeros(len(eval_dataset),dtype=torch.long).cuda())
-                cluster_result['centroids'].append(torch.zeros(int(num_cluster),args.low_dim).cuda())
+                cluster_result['im2cluster'].append(torch.zeros(len(kmeans_train_dataset),dtype=torch.long).cuda())
+                cluster_result['centroids'].append(torch.zeros(int(num_cluster),256).cuda())
                 cluster_result['density'].append(torch.zeros(int(num_cluster)).cuda())
 
             features[torch.norm(features,dim=1)>1.5] /= 2 #account for the few samples that are computed twice
@@ -145,9 +151,9 @@ def run_training(args):
 
         adjust_learning_rate(optimizer, epoch, args)
 
-        # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger)
-        break
+
+        train(moco_train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger)
+
         if (epoch+1)%5==0:
             save_checkpoint({
                 'epoch': epoch + 1,
@@ -215,7 +221,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
 
         if i % args.print_freq == 0:
             progress.display(i)
-        break
 
     print("Logging to TB....")
     tb_logger.add_scalar('Train Acc Inst', acc_inst.avg, epoch)

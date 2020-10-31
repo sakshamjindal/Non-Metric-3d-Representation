@@ -34,12 +34,15 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument("--gpu", type=int, nargs='+', default=None, help='GPU id to use.')
-parser.add_argument('--warmup-epoch', default=10, type=int,
+parser.add_argument('--warmup-epoch', default=5, type=int,
                     help='number of warm-up epochs to only train with InfoNCE loss')
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 parser.add_argument('--exp-dir', default='experiment_pcl', type=str,
                     help='experiment directory to store tb logs and checkpoints')
+parser.add_argument('--num-cluster', default='50,100,200', type=str, 
+                    help='number of clusters (should be less than equal to number of samples)')
+parser.add_argument('--temperature', default=0.2, type=float,help='softmax temperature')
 
 if not os.path.exists('tb_logs'):
     os.makedirs('tb_logs')
