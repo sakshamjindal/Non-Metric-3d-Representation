@@ -7,9 +7,10 @@ def compute_features(eval_loader, model, args):
     print('Computing features...')
     model.eval()
     features = torch.zeros(len(eval_loader.dataset),args.low_dim).cuda()
-    for i, (feed_dict_q, feed_dict_k, metadata) in enumerate(tqdm(eval_loader)):
+    for i, (feed_dict_q, metadata) in enumerate(tqdm(eval_loader)):
         with torch.no_grad():
-            feat = model(feed_dict_q, feed_dict_k, metadata, is_eval=True) 
+            feat = model(feed_dict_q, None, metadata, is_eval=True)
+            index = metadata['scene_num']
             features[index] = feat    
     return features.cpu()
 

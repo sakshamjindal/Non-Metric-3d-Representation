@@ -35,7 +35,7 @@ from torch.utils.data import DataLoader
 # Cell
 
 from .model.model import MoCo
-from .dataloader import GQNDataset_pdisco, collate_boxes
+from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery
 from .utils import compute_features, run_kmeans, AverageMeter, ProgressMeter, adjust_learning_rate, accuracy, save_checkpoint
 
 # Cell
@@ -87,8 +87,12 @@ def run_training(args):
 
     print('==> Preparing data..')
 
-    train_dataset = GQNDataset_pdisco(root_dir='/home/mprabhud/dataset/clevr_veggies/npys/be_lt.txt')
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
+    moco_train_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
+    moco_train_loader = DataLoader(moco_train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
+
+    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
+    kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
+
 
     print('==> Making model..')
 
@@ -128,7 +132,7 @@ def run_training(args):
 
         if epoch>=args.warmup_epoch:
             # compute momentum features for center-cropped images
-            features = compute_features(eval_loader, model, args)
+            features = compute_features(kmeans_train_loader, model, args)
 
             # placeholder for clustering result
             cluster_result = {'im2cluster':[],'centroids':[],'density':[]}
@@ -146,7 +150,7 @@ def run_training(args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger)
+        train(moco_train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger)
         break
         if (epoch+1)%5==0:
             save_checkpoint({
