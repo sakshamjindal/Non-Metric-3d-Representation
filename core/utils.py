@@ -11,7 +11,7 @@ def compute_features(eval_loader, model, args):
     for i, (feed_dict_q, metadata) in enumerate(tqdm(eval_loader)):
         with torch.no_grad():
             feat = model(feed_dict_q, None, metadata, is_eval=True)
-            index = metadata['scene_number']
+            index = metadata['index']
             features[index] = feat    
     return features.cpu()
 
