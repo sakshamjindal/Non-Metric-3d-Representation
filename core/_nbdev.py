@@ -12,7 +12,7 @@ index = {"Encoder": "Encoder.ipynb",
 
 modules = ["model/encoder.py",
            "model/model.py",
-           "scene_graph/scene_graph.py",
+           "model/scene_graph/scene_graph.py",
            "trainer.py"]
 
 doc_url = "https://sakshamjindal.github.io/core/"

@@ -130,7 +130,7 @@ class MoCo(nn.Module):
 
         return x_gather[idx_this]
 
-    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None):
+    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None, mode="node"):
         """
         Input:
             feed_dict_q: a batch of query images and bounding boxes
@@ -138,16 +138,20 @@ class MoCo(nn.Module):
             is_eval: return momentum embeddings (used for clustering)
             cluster_result: cluster assignments, centroids, and density
             index: indices for training samples
+            mode : should be either 'node' or 'spatial' depending on whether training for node or spatial embeddings
         Output:
             logits, targets, proto_logits, proto_targets
         """
 
+        rel_viewpoint = metadata["rel_viewpoint"]
+
+        if mode=="node":
+            rel_viewpoint=None
+
         if is_eval:
-            _, k, __ = self.encoder_k(feed_dict_q)
+            _, k = self.encoder_k(feed_dict_q, mode)
             k = nn.functional.normalize(k, dim=1)
             return k
-
-        rel_viewpoint = metadata["rel_viewpoint"]
 
         # compute key features
         with torch.no_grad():  # no gradient to keys
@@ -156,14 +160,14 @@ class MoCo(nn.Module):
 #             # shuffle for making use of BN
 #             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            _, k, __ = self.encoder_k(feed_dict_k, rel_viewpoint)  # keys: NxC
+            _, k = self.encoder_k(feed_dict_k, mode, rel_viewpoint)  # keys: NxC
             k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
 
 #             # undo shuffle
 #             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
         # compute query features
-        _, q, __ = self.encoder_q(feed_dict_q)  # queries: NxC
+        _, q = self.encoder_q(feed_dict_q, mode)  # queries: NxC
         q = nn.functional.normalize(q, dim=1)
 
         # compute logits
