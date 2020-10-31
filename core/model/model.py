@@ -19,7 +19,7 @@ class MoCo(nn.Module):
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder=None, dim=256, r=32, m=0.999, T=0.1, mlp=False):
+    def __init__(self, base_encoder=None, dim=256, r=120, m=0.999, T=0.1, mlp=False):
         """
         dim: feature dimension (default: 128)
         r: queue size; number of negative samples/prototypes (default: 16384)

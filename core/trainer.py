@@ -132,7 +132,7 @@ def run_training(args):
 
         cluster_result = None
 
-        if epoch>=args.warmup_epoch:
+        if epoch>=args.warmup_epoch or True:
             # compute momentum features for center-cropped images
             features = compute_features(kmeans_train_loader, model, args)
 
@@ -187,7 +187,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         data_time.update(time.time() - end)
 
         # compute output
-        index = metadata["scene_number"]
+        index = metadata["index"]
         output, target, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index)
 
         # InfoNCE loss
