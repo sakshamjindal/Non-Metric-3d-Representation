@@ -256,9 +256,9 @@ def random_retrieve_topk(pool_e, pool_g, imgs_to_view=3):
 def plot_query_retrieval(imgs_retrieval, outFile):
     n_retrieval = len(imgs_retrieval)
     fig = plt.figure(figsize=(20, 4))
-    for idx in range(3):
+    for idx in range(n_retrieval):
         for im in range(0, 11):
-            ax = fig.add_subplot(3, 11, 11*idx+im+1,xticks=[], yticks=[])
+            ax = fig.add_subplot(n_retrieval, 11, 11*idx+im+1,xticks=[], yticks=[])
             ax.imshow(imgs_retrieval[idx][im])
             if im==0:
                 ax.set_title('Query')

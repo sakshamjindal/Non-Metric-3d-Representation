@@ -8,7 +8,8 @@ index = {"Encoder": "Encoder.ipynb",
          "SceneGraph": "Scene-graph.ipynb",
          "setup_tb": "train_model.ipynb",
          "run_training": "train_model.ipynb",
-         "train": "train_model.ipynb"}
+         "train": "train_model.ipynb",
+         "val_retrieval": "train_model.ipynb"}
 
 modules = ["model/encoder.py",
            "model/model.py",
