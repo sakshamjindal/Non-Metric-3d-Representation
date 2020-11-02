@@ -85,7 +85,7 @@ class CLEVR_train(Dataset):
             
         self.all_files.sort()
             
-        print('Initialised.....',len(self.all_files)*(self.views-1),' files...')
+        print('Initialised.....',len(self.all_files),' files...')
             
     def bbox_rearrange(self,tree,boxes= [],classes={},all_classes=[]):
         for i in range(0, tree.num_children):
@@ -109,19 +109,18 @@ class CLEVR_train(Dataset):
         return tree,boxes,classes,all_classes
 
     def __len__(self):
-        return len(self.all_files)*self.views
+        return len(self.all_files)
 
     def __getitem__(self, idx, is_pickle=True):
         
         #print(idx)
 
-        scene_num = idx // self.views
-        query_img_view = idx % self.views
+        scene_num = idx 
         
-        key_img_view = random.sample(range(0, self.views), 1)[0]
         
-        while key_img_view == query_img_view:
-            key_img_view = random.sample(range(0, self.views), 1)[0]
+        query_img_view, key_img_view = random.sample(range(0, self.views), 2)
+        index = scene_num*self.views + query_img_view
+        
 
         scene_path = self.all_files[scene_num]
         data = pickle.load(open(scene_path, "rb"))
@@ -179,7 +178,7 @@ class CLEVR_train(Dataset):
         camR_T_origin_raw = np.stack((data['camR_T_origin_raw'][query_img_view], data['camR_T_origin_raw'][key_img_view]))
         origin_T_camXs_raw = np.stack((data['origin_T_camXs_raw'][query_img_view], data['origin_T_camXs_raw'][key_img_view]))
         
-        return torch.as_tensor(query_image), num_boxes, torch.as_tensor(boxes_q), torch.as_tensor(key_image), num_boxes, torch.as_tensor(boxes_k), scene_num, query_img_view, key_img_view, torch.as_tensor(pix_T_cams_raw), torch.as_tensor(camR_T_origin_raw), torch.as_tensor(origin_T_camXs_raw), torch.as_tensor(rel_viewpoint), idx
+        return torch.as_tensor(query_image), num_boxes, torch.as_tensor(boxes_q), torch.as_tensor(key_image), num_boxes, torch.as_tensor(boxes_k), scene_num, query_img_view, key_img_view, torch.as_tensor(pix_T_cams_raw), torch.as_tensor(camR_T_origin_raw), torch.as_tensor(origin_T_camXs_raw), torch.as_tensor(rel_viewpoint), index
 
 
 
@@ -235,7 +234,7 @@ class CLEVR_train_onlyquery(Dataset):
             
         self.all_files.sort()
             
-        print('Initialised.....',len(self.all_files),' files...')
+        print('Initialised.....',len(self.all_files)*self.views,' files...')
             
     def bbox_rearrange(self,tree,boxes= [],classes={},all_classes=[]):
         for i in range(0, tree.num_children):
@@ -306,6 +305,7 @@ class CLEVR_train_onlyquery(Dataset):
         origin_T_camXs_raw = data['origin_T_camXs_raw'][query_img_view]
         
         return torch.as_tensor(query_image), num_boxes, torch.as_tensor(boxes_q), scene_num, torch.as_tensor(pix_T_cams_raw), torch.as_tensor(camR_T_origin_raw), query_img_view, idx
+
 
 
 

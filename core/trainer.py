@@ -36,12 +36,12 @@ from torch.utils.data import DataLoader
 
 from .model.model import MoCo
 from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery
-from .utils import compute_features, run_kmeans, AverageMeter, ProgressMeter, adjust_learning_rate, accuracy, save_checkpoint
+from .utils import compute_features, run_kmeans, AverageMeter, ProgressMeter, adjust_learning_rate, accuracy, save_checkpoint, DoublePool_O, store_to_pool, random_retrieve_topk, plot_query_retrieval
 
 # Cell
 
 def setup_tb(exp_name):
-    tb_directory = os.path.join('../tb_logs', exp_name)
+    tb_directory = os.path.join('./tb_logs', exp_name)
     return SummaryWriter(tb_directory)
 
 # Cell
@@ -75,8 +75,8 @@ def run_training(args):
 
     if not os.path.exists(args.exp_dir):
         os.mkdir(args.exp_dir)
-    if not os.path.exists(os.path.join('../tb_logs',args.exp_dir)):
-        os.mkdir(os.path.join('../tb_logs', args.exp_dir))
+    if not os.path.exists(os.path.join('./tb_logs',args.exp_dir)):
+        os.mkdir(os.path.join('./tb_logs', args.exp_dir))
 
     ngpus_per_node = torch.cuda.device_count()
 
@@ -95,6 +95,9 @@ def run_training(args):
     kmeans_train_dataset = CLEVR_train_onlyquery(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
     kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
 
+    pool_size = len(moco_train_dataset)
+    pool_e_train = DoublePool_O(pool_size)
+    pool_g_train = DoublePool_O(pool_size)
 
     print('==> Making model..')
 
@@ -132,7 +135,7 @@ def run_training(args):
 
         cluster_result = None
 
-        if epoch>=args.warmup_epoch or True:
+        if epoch>=args.warmup_epoch:
             # compute momentum features for center-cropped images
             features = compute_features(kmeans_train_loader, model, args)
 
@@ -152,12 +155,13 @@ def run_training(args):
         adjust_learning_rate(optimizer, epoch, args)
 
 
-        train(moco_train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger)
+        train(moco_train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger, pool_e_train, pool_g_train)
+
+
 
         if (epoch+1)%5==0:
             save_checkpoint({
                 'epoch': epoch + 1,
-                'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'optimizer' : optimizer.state_dict(),
             }, is_best=False, filename='{}/checkpoint.pth.tar'.format(args.exp_dir))
@@ -166,7 +170,7 @@ def run_training(args):
 
 # Cell
 
-def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result=None, tb_logger=None):
+def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result=None, tb_logger=None, pool_e=None, pool_g=None):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -186,9 +190,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         # measure data loading time
         data_time.update(time.time() - end)
 
+
         # compute output
         index = metadata["index"]
         output, target, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index)
+
 
         # InfoNCE loss
         loss = criterion(output, target)
@@ -218,6 +224,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         batch_time.update(time.time() - end)
         end = time.time()
 
+        # store to pool
+        store_to_pool(pool_e, pool_g, feed_dict_q, feed_dict_k, metadata, model, args)
+        model.train()
+
 
         if i % args.print_freq == 0:
             progress.display(i)
@@ -226,3 +236,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
     tb_logger.add_scalar('Train Acc Inst', acc_inst.avg, epoch)
     tb_logger.add_scalar('Train Acc Prototype', acc_proto.avg, epoch)
     tb_logger.add_scalar('Train Total Loss', losses.avg, epoch)
+
+    if epoch % args.ret_freq == 0:
+        figures = random_retrieve_topk(pool_e, pool_g, imgs_to_view=3)
+        tb_logger.add_figure('Train Top10 Retrieval', figures, epoch)
