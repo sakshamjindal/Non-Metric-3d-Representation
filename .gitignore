@@ -21,7 +21,7 @@ __pycache__/
 
 #tensorboard logs
 tb_logs/
-
+single_obj_exp1/
 
 
 # Distribution / packaging
