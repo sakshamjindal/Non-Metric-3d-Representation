@@ -12,7 +12,7 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=6, type=int,
+parser.add_argument('-b', '--batch-size', default=5, type=int,
                     metavar='N',
                     help='mini-batch size (default: 16), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -43,6 +43,8 @@ parser.add_argument('--exp-dir', default='experiment_pcl', type=str,
 parser.add_argument('--num-cluster', default='50,100,200', type=str, 
                     help='number of clusters (should be less than equal to number of samples)')
 parser.add_argument('--temperature', default=0.2, type=float,help='softmax temperature')
+parser.add_argument('--ret_freq', default=5, type=int,metavar='N', help='visualize epoch frequency (default: 5)')
+
 
 if not os.path.exists('tb_logs'):
     os.makedirs('tb_logs')

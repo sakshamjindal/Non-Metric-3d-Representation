@@ -14,12 +14,14 @@ from .encoder import Encoder
 
 # Cell
 
+
+
 class MoCo(nn.Module):
     """
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder=None, dim=256, r=120, m=0.999, T=0.1, mlp=False):
+    def __init__(self, base_encoder=None, dim=256, r=35, m=0.999, T=0.1, mlp=False):
         """
         dim: feature dimension (default: 128)
         r: queue size; number of negative samples/prototypes (default: 16384)
@@ -148,6 +150,7 @@ class MoCo(nn.Module):
         if mode=="node":
             rel_viewpoint=None
 
+
         if is_eval:
             _, k = self.encoder_k(feed_dict_q, mode)
             k = nn.functional.normalize(k, dim=1)
@@ -174,6 +177,9 @@ class MoCo(nn.Module):
         # compute query features
         _, q = self.encoder_q(feed_dict_q, mode)  # queries: NxC
         q = nn.functional.normalize(q, dim=1)
+
+        # add to pool
+
 
         # compute logits
         # Einstein sum is more intuitive
@@ -205,6 +211,8 @@ class MoCo(nn.Module):
 
                 # sample negative prototypes
                 all_proto_id = [i for i in range(im2cluster.max())]
+
+                #print(len(pos_prototypes), len(all_proto_id))
                 neg_proto_id = set(all_proto_id)-set(pos_proto_id.tolist())
                 neg_proto_id = sample(neg_proto_id,self.r) #sample r negative prototypes
                 neg_prototypes = prototypes[neg_proto_id]
