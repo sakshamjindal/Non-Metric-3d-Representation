@@ -2,7 +2,7 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"Encoder": "Encoder.ipynb",
+index = {"Encoder": "Encoder-with-NodeMatching.ipynb",
          "MoCo": "MoCo.ipynb",
          "concat_all_gather": "MoCo.ipynb",
          "SceneGraph": "Scene-graph.ipynb",

@@ -13,9 +13,6 @@ import torch
 from .encoder import Encoder
 
 # Cell
-
-
-
 class MoCo(nn.Module):
     """
     Build a MoCo model with: a query encoder, a key encoder, and a queue
@@ -145,14 +142,18 @@ class MoCo(nn.Module):
             logits, targets, proto_logits, proto_targets
         """
 
-
-
         if mode=="node":
             rel_viewpoint=None
 
-
         if is_eval:
-            _, k = self.encoder_k(feed_dict_q, mode)
+            # the output from encoder is a list of features from the batch where each batch element (image)
+            # might contain different number of objects
+            k = self.encoder_k(feed_dict_q, mode)
+
+            # encoder output features in the list are stacked to form a tensor of features across the batch
+            k = stack_features_across_batch(k)
+
+            # normalize feature across the batch
             k = nn.functional.normalize(k, dim=1)
             return k
 
@@ -168,18 +169,25 @@ class MoCo(nn.Module):
 #             # shuffle for making use of BN
 #             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            _, k = self.encoder_k(feed_dict_k, mode, rel_viewpoint)  # keys: NxC
-            k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
+            k = self.encoder_k(feed_dict_k, mode, rel_viewpoint)  # keys: NxC
+            #k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
 
 #             # undo shuffle
 #             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
         # compute query features
-        _, q = self.encoder_q(feed_dict_q, mode)  # queries: NxC
+        q = self.encoder_q(feed_dict_q, mode)  # queries: NxC
+        #q = nn.functional.normalize(q, dim=1)
+
+        k,q = pair_embeddings(k,q)
+
+        k = stack_features_across_batch(k)
+        q = stack_features_across_batch(q)
+
         q = nn.functional.normalize(q, dim=1)
 
-        # add to pool
-
+        with torch.no_grad():
+            k = nn.functional.normalize(k, dim=1)
 
         # compute logits
         # Einstein sum is more intuitive
