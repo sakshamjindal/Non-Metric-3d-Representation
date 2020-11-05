@@ -12,7 +12,7 @@ from torchvision.models import resnet34
 # Cell
 
 class Encoder(nn.Module):
-    def __init__(self, dim = 256):
+    def __init__(self, dim = 256, mode=None):
         super().__init__()
 
         """
@@ -23,21 +23,25 @@ class Encoder(nn.Module):
             Intialises a model which has node embeddimgs and spatial embeddings
         """
 
-        self.dim = dim
+        self.dim=dim
+        self.mode=mode
         self.resnet = resnet34(pretrained=True)
         self.feature_extractor = nn.Sequential(*list(self.resnet.children())[:-3])
 
         self.scene_graph = SceneGraph(feature_dim=self.dim,
                                  output_dims=[self.dim,self.dim],
-                                 downsample_rate=16)
-
-        self.node_viewpoint_transformation = nn.Sequential(nn.Linear(263,512),
-                                                nn.ReLU(),
-                                                nn.Linear(512,self.dim))
+                                 downsample_rate=16,
+                                 mode=self.mode)
 
         self.spatial_viewpoint_transformation = nn.Sequential(nn.Linear(263,512),
                                                         nn.ReLU(),
                                                         nn.Linear(512,self.dim))
+
+        if self.mode=="spatial":
+            self.set_parameter_requires_grad()
+
+    def set_parameter_requires_grad(self):
+        self.feature_extractor.requires_grad = False
 
     def merge_pose_with_scene_embeddings(self,
                                      scene_embeddings,
@@ -92,7 +96,6 @@ class Encoder(nn.Module):
 
     def forward(self,
                 feed_dict,
-                mode="node",
                 rel_viewpoint=None):
         """
         Input:
@@ -104,11 +107,12 @@ class Encoder(nn.Module):
                                             ]
             mode: should be either 'node' or 'spatial' depending on what feature you want to extract
         """
+        mode = self.mode
         num_batch = feed_dict["images"].shape[0]
         num_total_nodes = feed_dict["objects"].sum().item()
 
         image_features = self.feature_extractor(feed_dict["images"])
-        outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"], mode=mode)
+        outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"])
 
         if mode=="node":
             return outputs

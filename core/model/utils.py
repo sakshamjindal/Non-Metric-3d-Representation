@@ -69,7 +69,7 @@ def pair_embeddings(output_k, output_q, mode = "node"):
         node_pool_rearranged = torch.zeros(pool_e.shape[0], 256)
         for index_node in range(num_obj_in_batch):
             pair_mapping_obj = pairs[index_node]
-            node_pool_rearranged[index_node] = output_q[batch_ind][0][pair_mapping_obj]
+            node_pool_rearranged[index_node] = output_q[batch_ind][0][pair_mapping_obj].clone()
         
         output_q[batch_ind][0] = node_pool_rearranged.cuda()
         
@@ -80,12 +80,11 @@ def pair_embeddings(output_k, output_q, mode = "node"):
                 for index_obj in range(num_obj_in_batch):
                     pair_mapping_subj = pairs[index_subj]
                     pair_mapping_obj = pairs[index_obj]
-                    spatial_pool_rearranged[index_subj][index_obj] = output_q[batch_ind][1][pair_mapping_subj][pair_mapping_obj]
+                    spatial_pool_rearranged[index_subj][index_obj] = output_q[batch_ind][1][pair_mapping_subj][pair_mapping_obj].clone()
                     
             output_q[batch_ind][1] = spatial_pool_rearranged
         
     return output_k, output_q
-
 
 def stack_features_across_batch(output_feature_list, mode="node"):
 
@@ -102,9 +101,9 @@ def stack_features_across_batch(output_feature_list, mode="node"):
         spatial_features = output_feature_list[0][1].view(-1,256)
 
         for num in range(1, num_batch):
-            spatial_features = torch.cat([spatial_features, outputs[num][1].view(-1,256)], dim =0)
+            spatial_features = torch.cat([spatial_features, output_feature_list[num][1].view(-1,256)], dim =0)
             
         return spatial_features
     
-    raise ValueError("Training mode not defined properly. It should be either 'node' or 'spatial'." )       
+    raise ValueError("Training mode not defined properly. It should be either 'node' or 'spatial'." )      
 
