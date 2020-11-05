@@ -44,8 +44,8 @@ class MoCo(nn.Module):
 #             self.encoder_q.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
 #             self.encoder_k.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc)
 
-        self.encoder_q = Encoder(dim = dim, self.mode)
-        self.encoder_k = Encoder(dim = dim, self.mode)
+        self.encoder_q = Encoder(dim = dim, mode=self.mode)
+        self.encoder_k = Encoder(dim = dim, mode=self.mode)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -182,7 +182,7 @@ class MoCo(nn.Module):
         q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
         #q = nn.functional.normalize(q, dim=1)
 
-        k,q = pair_embeddings(k,q, mode)
+        k,q = pair_embeddings(k_outputs, q_outputs, mode)
 
         k = stack_features_across_batch(k, mode)
         q = stack_features_across_batch(q, mode)
