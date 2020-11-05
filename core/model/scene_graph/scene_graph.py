@@ -12,12 +12,13 @@ from torchvision.models import resnet34
 from .utils import *
 
 class SceneGraph(nn.Module):
-    def __init__(self, feature_dim=256, output_dims=[256,256], downsample_rate=16):
+    def __init__(self, feature_dim=256, output_dims=[256,256], downsample_rate=16, mode=None):
         super().__init__()
         self.pool_size = 7
         self.feature_dim = feature_dim
         self.output_dims = output_dims
         self.downsample_rate = downsample_rate
+        self.mode = mode
 
         self.object_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
         self.context_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
@@ -32,7 +33,17 @@ class SceneGraph(nn.Module):
         self.object_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[0] * self.pool_size ** 2, output_dims[0]))
         self.relation_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[1] * self.pool_size ** 2, output_dims[1]))
 
-        self.reset_parameters()
+        # this will change for models with multiple objects in future
+        # in that case, it will pick up the pretrained weights
+        if mode=="node":
+            self.reset_parameters()
+
+        if self.mode=="spatial":
+            self.set_parameter_requires_grad()
+
+    def set_parameter_requires_grad(self):
+        self.object_roi_pool.requires_grad = False
+        self.object_feature_fc.requires_grad = False
 
     def reset_parameters(self):
         for m in self.modules():
@@ -43,8 +54,9 @@ class SceneGraph(nn.Module):
                 nn.init.kaiming_normal_(m.weight.data)
                 m.bias.data.zero_()
 
-    def forward(self, image_features, objects, objects_length, mode="node"):
+    def forward(self, image_features, objects, objects_length):
 
+        mode = self.mode
         object_features = image_features
         context_features = self.context_feature_extract(image_features)
         relation_features = self.relation_feature_extract(image_features)
@@ -93,9 +105,9 @@ class SceneGraph(nn.Module):
 #            this_object_features = self.object_roi_pool(object_features, torch.cat([batch_ind, box], dim=-1))
 
             if mode=="node":
-                outputs.append(
-                    self._norm(self.object_feature_fc(this_object_features.view(box.size(0), -1)))
-            )
+                outputs.append([
+                    self._norm(self.object_feature_fc(this_object_features.view(box.size(0), -1))), None
+                ])
             elif mode=="spatial":
                 this_relation_features = self.relation_roi_pool(relation_features, torch.cat([rel_batch_ind, union_box], dim=-1))
                 x, y, z = this_relation_features.chunk(3, dim=1)
@@ -104,9 +116,10 @@ class SceneGraph(nn.Module):
                     x, y * sub_union_imap, z * obj_union_imap
                 ], dim=1))
 
-                outputs.append(
+                outputs.append([
+                    self._norm(self.object_feature_fc(this_object_features.view(box.size(0), -1))),
                     self._norm(self.relation_feature_fc(this_relation_features.view(box.size(0) * box.size(0), -1)).view(box.size(0), box.size(0), -1))
-                )
+                ])
             else:
                 raise ValueError("Feature Generation mode not defined properly. It should be either 'node' or 'spatial'.")
 

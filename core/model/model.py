@@ -18,7 +18,7 @@ class MoCo(nn.Module):
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder=None, dim=256, r=35, m=0.999, T=0.1, mlp=False):
+    def __init__(self, base_encoder=None, dim=256, r=35, m=0.999, T=0.1, mlp=False, mode=None):
         """
         dim: feature dimension (default: 128)
         r: queue size; number of negative samples/prototypes (default: 16384)
@@ -31,6 +31,7 @@ class MoCo(nn.Module):
         self.r = r
         self.m = m
         self.T = T
+        self.mode = mode
 
 
         # create the encoders
@@ -43,8 +44,8 @@ class MoCo(nn.Module):
 #             self.encoder_q.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc)
 #             self.encoder_k.fc = nn.Sequential(nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc)
 
-        self.encoder_q = Encoder(dim = dim)
-        self.encoder_k = Encoder(dim = dim)
+        self.encoder_q = Encoder(dim = dim, mode=self.mode)
+        self.encoder_k = Encoder(dim = dim, mode=self.mode)
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -129,7 +130,7 @@ class MoCo(nn.Module):
 
         return x_gather[idx_this]
 
-    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None, mode="node"):
+    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None):
         """
         Input:
             feed_dict_q: a batch of query images and bounding boxes
@@ -142,16 +143,18 @@ class MoCo(nn.Module):
             logits, targets, proto_logits, proto_targets
         """
 
+        mode = self.mode
+
         if mode=="node":
             rel_viewpoint=None
 
         if is_eval:
             # the output from encoder is a list of features from the batch where each batch element (image)
             # might contain different number of objects
-            k = self.encoder_k(feed_dict_q, mode)
+            k = self.encoder_k(feed_dict_q)
 
             # encoder output features in the list are stacked to form a tensor of features across the batch
-            k = stack_features_across_batch(k)
+            k = stack_features_across_batch(k, mode)
 
             # normalize feature across the batch
             k = nn.functional.normalize(k, dim=1)
@@ -169,20 +172,20 @@ class MoCo(nn.Module):
 #             # shuffle for making use of BN
 #             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            k = self.encoder_k(feed_dict_k, mode, rel_viewpoint)  # keys: NxC
+            k_outputs = self.encoder_k(feed_dict_k, rel_viewpoint)
             #k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
 
 #             # undo shuffle
 #             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
         # compute query features
-        q = self.encoder_q(feed_dict_q, mode)  # queries: NxC
+        q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
         #q = nn.functional.normalize(q, dim=1)
 
-        k,q = pair_embeddings(k,q)
+        k,q = pair_embeddings(k_outputs, q_outputs, mode)
 
-        k = stack_features_across_batch(k)
-        q = stack_features_across_batch(q)
+        k = stack_features_across_batch(k, mode)
+        q = stack_features_across_batch(q, mode)
 
         q = nn.functional.normalize(q, dim=1)
 
