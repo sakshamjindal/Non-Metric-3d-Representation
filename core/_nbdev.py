@@ -2,7 +2,7 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"Encoder": "Encoder-with-NodeMatching.ipynb",
+index = {"Encoder": "Encoder.ipynb",
          "MoCo": "MoCo.ipynb",
          "concat_all_gather": "MoCo.ipynb",
          "SceneGraph": "Scene-graph.ipynb",
@@ -11,7 +11,8 @@ index = {"Encoder": "Encoder-with-NodeMatching.ipynb",
          "train": "train_model.ipynb",
          "val_retrieval": "train_model.ipynb"}
 
-modules = ["model/encoder.py",
+modules = ["model/encoder_trial.py",
+           "model/encoder.py",
            "model/model.py",
            "model/scene_graph/scene_graph.py",
            "trainer.py"]

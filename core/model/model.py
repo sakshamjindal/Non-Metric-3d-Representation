@@ -31,6 +31,7 @@ class MoCo(nn.Module):
         self.r = r
         self.m = m
         self.T = T
+        self.mode=None
 
 
         # create the encoders
@@ -169,17 +170,17 @@ class MoCo(nn.Module):
 #             # shuffle for making use of BN
 #             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
 
-            k = self.encoder_k(feed_dict_k, mode, rel_viewpoint)  # keys: NxC
+            k_outputs = self.encoder_k(feed_dict_k, mode, rel_viewpoint)
             #k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
 
 #             # undo shuffle
 #             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
         # compute query features
-        q = self.encoder_q(feed_dict_q, mode)  # queries: NxC
+        q_outputs = self.encoder_q(feed_dict_q, mode)  # queries: NxC
         #q = nn.functional.normalize(q, dim=1)
 
-        k,q = pair_embeddings(k,q)
+        k,q = pair_embeddings(k_outputs, q_outputs, mode)
 
         k = stack_features_across_batch(k)
         q = stack_features_across_batch(q)
