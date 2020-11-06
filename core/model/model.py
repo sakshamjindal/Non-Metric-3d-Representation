@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch
 
 from .encoder import Encoder
+from .utils import pair_embeddings, stack_features_across_batch
 
 # Cell
 class MoCo(nn.Module):
@@ -155,8 +156,6 @@ class MoCo(nn.Module):
 
             # encoder output features in the list are stacked to form a tensor of features across the batch
             k = stack_features_across_batch(k, mode)
-            
-            print(k.shape)
 
             # normalize feature across the batch
             k = nn.functional.normalize(k, dim=1)
@@ -184,7 +183,8 @@ class MoCo(nn.Module):
         q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
         #q = nn.functional.normalize(q, dim=1)
 
-        k,q = pair_embeddings(k_outputs, q_outputs, mode)
+#         k,q = pair_embeddings(k_outputs, q_outputs, mode)
+        k,q = k_outputs, q_outputs
 
         k = stack_features_across_batch(k, mode)
         q = stack_features_across_batch(q, mode)
