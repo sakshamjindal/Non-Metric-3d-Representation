@@ -89,17 +89,17 @@ def run_training(args):
 
     print('==> Preparing data..')
 
-    moco_train_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
+    moco_train_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt', hyp_N=1)
     moco_train_loader = DataLoader(moco_train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
 
-    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt')
+    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt', hyp_N=1)
     kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
 
     pool_size = len(moco_train_dataset)
     pool_e_train = DoublePool_O(pool_size)
     pool_g_train = DoublePool_O(pool_size)
 
-    moco_val_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5v.txt')
+    moco_val_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5v.txt', hyp_N=1)
     moco_val_loader = DataLoader(moco_val_dataset, batch_size=1, shuffle=True, collate_fn=collate_boxes)
 
     pool_size = len(moco_val_dataset)

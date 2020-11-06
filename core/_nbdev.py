@@ -11,8 +11,7 @@ index = {"Encoder": "Encoder.ipynb",
          "train": "train_model.ipynb",
          "val_retrieval": "train_model.ipynb"}
 
-modules = ["model/encoder_trial.py",
-           "model/encoder.py",
+modules = ["model/encoder.py",
            "model/model.py",
            "model/scene_graph/scene_graph.py",
            "trainer.py"]
