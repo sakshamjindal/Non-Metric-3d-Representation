@@ -21,13 +21,13 @@ class SceneGraph(nn.Module):
         self.mode = mode
 
         self.object_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
-        self.context_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
+#         self.context_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
         self.relation_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
 
-        self.context_feature_extract = nn.Conv2d(feature_dim, feature_dim, 1)
+#         self.context_feature_extract = nn.Conv2d(feature_dim, feature_dim, 1)
         self.relation_feature_extract = nn.Conv2d(feature_dim, feature_dim // 2 * 3, 1)
 
-        self.object_feature_fuse = nn.Conv2d(feature_dim * 2, output_dims[0], 1)
+#         self.object_feature_fuse = nn.Conv2d(feature_dim * 2, output_dims[0], 1)
         self.relation_feature_fuse = nn.Conv2d(feature_dim // 2 * 3 + output_dims[0] * 2, output_dims[1], 1)
 
         self.object_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[0] * self.pool_size ** 2, output_dims[0]))
@@ -58,7 +58,7 @@ class SceneGraph(nn.Module):
 
         mode = self.mode
         object_features = image_features
-        context_features = self.context_feature_extract(image_features)
+#         context_features = self.context_feature_extract(image_features)
         relation_features = self.relation_feature_extract(image_features)
 
         outputs = list()
@@ -91,18 +91,18 @@ class SceneGraph(nn.Module):
                 rel_batch_ind = i + torch.zeros(union_box.size(0), 1, dtype=box.dtype, device=box.device)
 
                 # intersection maps
-                box_context_imap = generate_intersection_map(box, image_box, self.pool_size)
+#                 box_context_imap = generate_intersection_map(box, image_box, self.pool_size)
                 sub_union_imap = generate_intersection_map(sub_box, union_box, self.pool_size)
                 obj_union_imap = generate_intersection_map(obj_box, union_box, self.pool_size)
 
-            this_context_features = self.context_roi_pool(context_features, torch.cat([batch_ind, image_box], dim=-1))
-            x, y = this_context_features.chunk(2, dim=1)
-            this_object_features = self.object_feature_fuse(torch.cat([
-                self.object_roi_pool(object_features, torch.cat([batch_ind, box], dim=-1)),
-                x, y * box_context_imap
-            ], dim=1))
+#             this_context_features = self.context_roi_pool(context_features, torch.cat([batch_ind, image_box], dim=-1))
+#             x, y = this_context_features.chunk(2, dim=1)
+#             this_object_features = self.object_feature_fuse(torch.cat([
+#                 self.object_roi_pool(object_features, torch.cat([batch_ind, box], dim=-1)),
+#                 x, y * box_context_imap
+#             ], dim=1))
 
-#            this_object_features = self.object_roi_pool(object_features, torch.cat([batch_ind, box], dim=-1))
+            this_object_features = self.object_roi_pool(object_features, torch.cat([batch_ind, box], dim=-1))
 
             if mode=="node":
                 outputs.append([
