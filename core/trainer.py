@@ -140,6 +140,20 @@ def run_training(args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
+    if args.use_pretrained:
+        if os.path.isfile(args.use_pretrained):
+            print("=> loading checkpoint '{}'".format(args.use_pretrained))
+            state_dict = torch.load(args.use_pretrained)['state_dict']
+            del state_dict['queue']
+            del state_dict['queue_ptr']
+
+            model_dict = model.state_dict()
+            model_dict.update(state_dict)
+
+            model.load_state_dict(model_dict)
+        else:
+            print("=> no checkpoint found at '{}'".format(args.use_pretrained))
+
     for epoch in range(args.start_epoch, args.epochs):
 
         cluster_result = None
@@ -155,7 +169,7 @@ def run_training(args):
                 cluster_result['centroids'].append(torch.zeros(int(num_cluster),256).cuda())
                 cluster_result['density'].append(torch.zeros(int(num_cluster)).cuda())
 
-            features[torch.norm(features,dim=1)>1.5] /= 2 #account for the few samples that are computed twice
+#             features[torch.norm(features,dim=1)>1.5] /= 2 #account for the few samples that are computed twice
             features = features.numpy()
             cluster_result = run_kmeans(features,args)  #run kmeans clustering on master node
                 # save the clustering result
@@ -169,7 +183,7 @@ def run_training(args):
 
 
         if (epoch+1)%5==0:
-            val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
+#             val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),

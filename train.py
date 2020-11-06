@@ -29,7 +29,8 @@ parser.add_argument('-p', '--print-freq', default=100, type=int,
                     metavar='N', help='print iter frequency (default: 100)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-
+parser.add_argument('--use_pretrained', default='', type=str, metavar='PATH',
+                    help='path to pretrained checkpoint (default: none)')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument("--gpu", type=int, nargs='+', default=None, help='GPU id to use.')

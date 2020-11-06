@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch
 
 from .encoder import Encoder
-from .utils import pair_embeddings, stack_features_across_batch
+from .utils import pair_embeddings, stack_features_across_batch, convert_indices
 
 # Cell
 class MoCo(nn.Module):
@@ -82,6 +82,9 @@ class MoCo(nn.Module):
         self.queue[:, ptr:ptr + batch_size] = keys.T
         ptr = (ptr + batch_size) % self.r  # move pointer
 
+        if self.r % batch_size != 0:
+            ptr=0
+
         self.queue_ptr[0] = ptr
 
     @torch.no_grad()
@@ -145,6 +148,7 @@ class MoCo(nn.Module):
         """
 
         mode = self.mode
+        hyp_N = feed_dict_q["objects"][0].item()
 
         if mode=="node":
             rel_viewpoint=None
@@ -212,6 +216,8 @@ class MoCo(nn.Module):
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(k)
+
+        index = convert_indices(index,hyp_N, mode)
 
         # prototypical contrast
         if cluster_result is not None:
