@@ -101,7 +101,7 @@ def run_training(args):
     pool_e_train = DoublePool_O(pool_size)
     pool_g_train = DoublePool_O(pool_size)
 
-    moco_val_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5v.txt', hyp_N=1)
+    moco_val_dataset = CLEVR_train(root_dir=valdir, hyp_N=args.hyp_N)
     moco_val_loader = DataLoader(moco_val_dataset, batch_size=1, shuffle=True, collate_fn=collate_boxes)
 
     pool_size = len(moco_val_dataset)
