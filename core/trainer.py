@@ -89,10 +89,12 @@ def run_training(args):
 
     print('==> Preparing data..')
 
-    moco_train_dataset = CLEVR_train(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt', hyp_N=1)
+    traindir = os.path.join(args.data)
+    valdir = os.path.join(args.data[:-5] + 'v.txt')
+    moco_train_dataset = CLEVR_train(root_dir=traindir, hyp_N=args.hyp_N)
     moco_train_loader = DataLoader(moco_train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
 
-    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir='/home/mprabhud/dataset/clevr_lang/npys/aa_5t.txt', hyp_N=1)
+    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir=valdir, hyp_N=args.hyp_N)
     kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
 
     pool_size = len(moco_train_dataset)
@@ -108,7 +110,7 @@ def run_training(args):
 
     print('==> Making model..')
 
-    model = MoCo()
+    model = MoCo(mode=args.mode, r=args.moco_r)
     #model = nn.DataParallel(model)
     model = model.to(device)
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
