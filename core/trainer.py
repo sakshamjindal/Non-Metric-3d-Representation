@@ -94,7 +94,7 @@ def run_training(args):
     moco_train_dataset = CLEVR_train(root_dir=traindir, hyp_N=args.hyp_N)
     moco_train_loader = DataLoader(moco_train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
 
-    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir=valdir, hyp_N=args.hyp_N)
+    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir=traindir, hyp_N=args.hyp_N)
     kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
 
     pool_size = len(moco_train_dataset)
