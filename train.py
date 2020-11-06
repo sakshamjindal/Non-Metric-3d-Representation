@@ -4,7 +4,7 @@ import os
 from core.trainer import run_training
 
 parser = argparse.ArgumentParser(description='Relational 2d Training')
-parser.add_argument('data', metavar='DIR',help='path to datasets root directory')
+parser.add_argument('--data', metavar='DIR',help='path to datasets root directory')
 parser.add_argument('-j', '--num-worker', default=1, type=int, metavar='N',
                     help='number of data loading workers (default: 1)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',

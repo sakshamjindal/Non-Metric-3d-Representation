@@ -155,6 +155,8 @@ class MoCo(nn.Module):
 
             # encoder output features in the list are stacked to form a tensor of features across the batch
             k = stack_features_across_batch(k, mode)
+            
+            print(k.shape)
 
             # normalize feature across the batch
             k = nn.functional.normalize(k, dim=1)
