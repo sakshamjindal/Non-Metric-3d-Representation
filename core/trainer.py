@@ -98,15 +98,20 @@ def run_training(args):
     kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
 
     pool_size = len(moco_train_dataset)
-    pool_e_train = DoublePool_O(pool_size)
-    pool_g_train = DoublePool_O(pool_size)
+
+    isnode = False
+    if args.mode=='node':
+        isnode = True
+
+    pool_e_train = DoublePool_O(pool_size, isnode)
+    pool_g_train = DoublePool_O(pool_size, isnode)
 
     moco_val_dataset = CLEVR_train(root_dir=valdir, hyp_N=args.hyp_N)
     moco_val_loader = DataLoader(moco_val_dataset, batch_size=1, shuffle=True, collate_fn=collate_boxes)
 
     pool_size = len(moco_val_dataset)
-    pool_e_val = DoublePool_O(pool_size)
-    pool_g_val = DoublePool_O(pool_size)
+    pool_e_val = DoublePool_O(pool_size, isnode)
+    pool_g_val = DoublePool_O(pool_size, isnode)
 
     print('==> Making model..')
 
@@ -183,12 +188,13 @@ def run_training(args):
 
 
         if (epoch+1)%5==0:
-#             val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
+            val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
+        if (epoch+1)%50==0:
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
                 'optimizer' : optimizer.state_dict(),
-            }, is_best=False, filename='./tb_logs/{}/checkpoint.pth.tar'.format(args.exp_dir))
+            }, is_best=False, filename='./tb_logs/{}/checkpoint_{}.pth.tar'.format(args.exp_dir, str(epoch))
 
 
 
@@ -262,7 +268,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
     tb_logger.add_scalar('Train Total Loss', losses.avg, epoch)
 
     if epoch % args.ret_freq == 0:
-        figures = random_retrieve_topk(pool_e, pool_g, imgs_to_view=3)
+        figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=3)
         tb_logger.add_figure('Train Top10 Retrieval', figures, epoch)
 
 
@@ -275,10 +281,62 @@ def val_retrieval(val_loader, model, epoch, args, tb_logger=None, pool_e=None, p
             feat_q = model(feed_dict_q, None, metadata, is_eval=True)
             feat_k = model(feed_dict_k, None, metadata, is_eval=True)
 
-            pool_e.update(feat_q, feed_dict_q["images"], metadata["scene_number"],None, None)
-            pool_g.update(feat_k, feed_dict_k["images"], metadata["scene_number"],None, None)
+            dim1 = feat_q.shape[0]
+            img_q = torch.zeros([dim1, 3, 256, 256])
+            img_k = torch.zeros([dim1, 3, 256, 256])
 
-    figures = random_retrieve_topk(pool_e, pool_g, imgs_to_view=5)
+
+            if args.mode=='node':
+                cnt = 0
+
+                for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                    for s in range(args.hyp_N):
+                        img_q[cnt] = feed_dict_q["images"][b]
+                        img_k[cnt] = feed_dict_k["images"][b]
+                        cnt += 1
+
+                pool_e.update(feat_q, img_q, feed_dict_q["objects_boxes"], None)
+                pool_g.update(feat_k, img_k, feed_dict_k["objects_boxes"], None)
+
+            else:
+                dim1 = feat_q.shape[0]
+                subj_q = torch.zeros([dim1, 4])
+                subj_k = torch.zeros([dim1, 4])
+                obj_q = torch.zeros([dim1, 4])
+                obj_k = torch.zeros([dim1, 4])
+
+                cnt = 0
+                for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                    for s in range(args.hyp_N):
+                        for o in range(args.hyp_N):
+                            img_q[cnt] = feed_dict_q["images"][b]
+                            img_k[cnt] = feed_dict_k["images"][b]
+                            cnt += 1
+
+                cnt = 0
+                for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                    for s in range(args.hyp_N):
+                        for o in range(args.hyp_N):
+                            start_idx = b*args.hyp_N
+                            subj_q[cnt] = feed_dict_q["objects_boxes"][start_idx + s]
+                            obj_q[cnt] = feed_dict_q["objects_boxes"][start_idx + o]
+                            cnt += 1
+
+
+                cnt = 0
+                for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                    for s in range(args.hyp_N):
+                        for o in range(args.hyp_N):
+                            start_idx = b*args.hyp_N
+                            subj_k[cnt] = feed_dict_k["objects_boxes"][start_idx + s]
+                            obj_k[cnt] = feed_dict_k["objects_boxes"][start_idx + o]
+                            cnt += 1
+
+                pool_e.update(feat_q, img_q, subj_q, obj_q)
+                pool_g.update(feat_k, img_k, subj_k, obj_k)
+
+    figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=5)
     tb_logger.add_figure('Validation Top10 Retrieval', figures, epoch)
 
     return
+
