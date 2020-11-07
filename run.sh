@@ -10,7 +10,8 @@ python train.py --batch-size 5 \
                 
 python train.py --batch-size 5 \
                 --seed 0 \
-                --exp-dir two_obj_exp1 \
+                --exp-dir two_obj_spatial_without_pretrained \
+                --epochs 300 \
                 --warmup-epoch 10 \
                 --num-cluster 200 \
                 --moco_r 100 \
@@ -22,7 +23,8 @@ python train.py --batch-size 5 \
                 
 python train.py --batch-size 5 \
                 --seed 0 \
-                --exp-dir two_obj_exp1 \
+                --exp-dir two_obj_spatial_node_pretrained \
+                --epochs 300 \
                 --warmup-epoch 60 \
                 --num-cluster 200 \
                 --moco_r 100 \

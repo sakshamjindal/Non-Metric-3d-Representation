@@ -5,6 +5,10 @@ import faiss
 from tqdm import tqdm
 import random
 import matplotlib.pyplot as plt
+import cv2
+
+import ipdb
+st = ipdb.set_trace
 
 def compute_features(eval_loader, model, arg):
     
@@ -178,72 +182,158 @@ def run_kmeans(x, args):
     return results
 
 class DoublePool_O():
-    def __init__(self, pool_size):
+    def __init__(self, pool_size, isnode=True):
         self.pool_size = pool_size
+        self.isnode = isnode
         random.seed(125)
         if self.pool_size > 0:
             self.num = 0
             self.embeds = []
-            self.scene_nums = []
+            #self.scene_nums = []
             self.images = []
-            #self.classes = []
-            
+            self.sub_box = []
+            if not self.isnode:
+                self.obj_box = []
+
     def fetch(self):
-        return self.embeds, self.images, self.scene_nums #, self.classes,None, self.visual2D
+        if self.isnode:
+            return self.embeds, self.images, self.sub_box #, self.classes,None, self.visual2D
+        return self.embeds, self.images, self.sub_box, self.obj_box
             
     def is_full(self):
         full = self.num==self.pool_size
         # print 'num = %d; full = %s' % (self.num, full)
         return full
             
-    def update(self, embeds, images, scene_nums, classes=None, vis2Ds=None):
+    def update(self, embeds, images, sub_boxs=None, obj_boxs=None):
         # embeds is B x ... x C
         # images is B x ... x 3
+        assert embeds.shape[0]==images.shape[0]
+        assert embeds.shape[0]==sub_boxs.shape[0]
+        
 
-        #for embed, image, class_val,vis2D in zip(embeds, images,classes, vis2Ds):
-        for embed, image, scene_num in zip(embeds, images, scene_nums):
-            if self.num < self.pool_size:
-                # the pool is not full, so let's add this in
-                self.num = self.num + 1
-            else:
-                # the pool is full
-                # pop from the front
-                self.embeds.pop(0)
-                self.images.pop(0)
-                self.scene_nums.pop(0)
-                #self.classes.pop(0)
-                #self.visual2D.pop(0)
-            # add to the back
-            self.embeds.append(embed)
-            self.images.append(image)
-            self.scene_nums.append(scene_num)
+        if self.isnode:
+            for embed, image, sub_box in zip(embeds, images, sub_boxs):
+                if self.num < self.pool_size:
+                    # the pool is not full, so let's add this in
+                    self.num = self.num + 1
+                else:
+                    # the pool is full
+                    # pop from the front
+                    self.embeds.pop(0)
+                    self.images.pop(0)
+             
+                    self.sub_box.pop(0)
+                    #self.visual2D.pop(0)
+                # add to the back
+                self.embeds.append(embed)
+                self.images.append(image)
+           
+                self.sub_box.append(sub_box)
+        else:
+            assert sub_boxs.shape[0]==obj_boxs.shape[0]
             
-            #self.classes.append(class_val)
-            #self.visual2D.append(vis2D)
-        # return self.embeds, self.images
+            for embed, image, sub_box, obj_box in zip(embeds, images, sub_boxs, obj_boxs):
+                if self.num < self.pool_size:
+                    # the pool is not full, so let's add this in
+                    self.num = self.num + 1
+                else:
+                    # the pool is full
+                    # pop from the front
+                    self.embeds.pop(0)
+                    self.images.pop(0)
+               
+                    self.sub_box.pop(0)
+                    self.obj_box.pop(0)
+                # add to the back
+                self.embeds.append(embed)
+                self.images.append(image)
+        
+                self.sub_box.append(sub_box)
+                self.obj_box.append(obj_box)
+            
+
         
 
 def store_to_pool(pool_e, pool_g, feed_dict_q, feed_dict_k, metadata, model, args):
+    
+#     st()
     #print('Storing to pool...')
     model.eval()
     with torch.no_grad():
         feat_q = model(feed_dict_q, None, metadata, is_eval=True)
         feat_k = model(feed_dict_k, None, metadata, is_eval=True)
-
-        pool_e.update(feat_q, feed_dict_q["images"], metadata["scene_number"],None, None)
-        pool_g.update(feat_k, feed_dict_k["images"], metadata["scene_number"],None, None)
+        
+        dim1 = feat_q.shape[0]
+        img_q = torch.zeros([dim1, 3, 256, 256])
+        img_k = torch.zeros([dim1, 3, 256, 256])
+        
+        
+        if args.mode=='node':
+            cnt = 0
+            
+            for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                for s in range(args.hyp_N):
+                    img_q[cnt] = feed_dict_q["images"][b]
+                    img_k[cnt] = feed_dict_k["images"][b]
+                    cnt += 1
+                    
+            pool_e.update(feat_q, img_q, feed_dict_q["objects_boxes"], None)
+            pool_g.update(feat_k, img_k, feed_dict_k["objects_boxes"], None)
+            
+        else:
+            dim1 = feat_q.shape[0]
+            subj_q = torch.zeros([dim1, 4])
+            subj_k = torch.zeros([dim1, 4])
+            obj_q = torch.zeros([dim1, 4])
+            obj_k = torch.zeros([dim1, 4])
+            
+            cnt = 0
+            for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                for s in range(args.hyp_N):
+                    for o in range(args.hyp_N):
+                        img_q[cnt] = feed_dict_q["images"][b]
+                        img_k[cnt] = feed_dict_k["images"][b]
+                        cnt += 1
+            
+            cnt = 0
+            for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                for s in range(args.hyp_N):
+                    for o in range(args.hyp_N):
+                        start_idx = b*args.hyp_N
+                        subj_q[cnt] = feed_dict_q["objects_boxes"][start_idx + s]
+                        obj_q[cnt] = feed_dict_q["objects_boxes"][start_idx + o]
+                        cnt += 1
+                
+                
+            cnt = 0
+            for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
+                for s in range(args.hyp_N):
+                    for o in range(args.hyp_N):
+                        start_idx = b*args.hyp_N
+                        subj_k[cnt] = feed_dict_k["objects_boxes"][start_idx + s]
+                        obj_k[cnt] = feed_dict_k["objects_boxes"][start_idx + o]
+                        cnt += 1
+                    
+            pool_e.update(feat_q, img_q, subj_q, obj_q)
+            pool_g.update(feat_k, img_k, subj_k, obj_k)
+            
                 
     return
 
 
 from sklearn.neighbors import NearestNeighbors
-def random_retrieve_topk(pool_e, pool_g, imgs_to_view=3):
+def random_retrieve_topk(args, pool_e=None, pool_g=None, imgs_to_view=3):
+    
+#     st()
+    
     print("==> Fitting k-nearest-neighbour model on pool g...")
     knn = NearestNeighbors(n_neighbors=10, metric="cosine")
     knn.fit(torch.stack(pool_g.embeds).cpu())
     
     # select imgs_to_view images from pool q randomly
     query_indices_to_use = random.sample(range(0, pool_e.num), imgs_to_view)
+    assert pool_e.num==pool_g.num
     
     
     figures_gen = []
@@ -254,29 +344,61 @@ def random_retrieve_topk(pool_e, pool_g, imgs_to_view=3):
     for i, index in enumerate(query_indices_to_use):
         temp = []
         _, indices = knn.kneighbors(torch.reshape(pool_e.embeds[index], (1,-1)).cpu()) # find k nearest train neighbours
-        #print(pool_e.scene_nums[index])
-        img_query = pool_e.images[index].permute(1,2,0).cpu() # query image
+   
+        img_query = pool_e.images[index].permute(1,2,0).cpu().numpy() # query image
         temp.append(img_query)
-        imgs_retrieval = [pool_g.images[idx].permute(1,2,0).cpu() for idx in indices.flatten()]# retrieval images
-        temp.extend(imgs_retrieval)
-        #print([pool_g.scene_nums[idx].cpu() for idx in indices.flatten()])
-        figures_gen.append(temp)
-    fig = plot_query_retrieval(figures_gen, None)
         
-    return fig
+        imgs_retrieval = [pool_g.images[idx].permute(1,2,0).cpu().numpy() for idx in indices.flatten()]# retrieval images
+        temp.extend(imgs_retrieval)
+        
+        imgs_sub_boxes = [pool_e.sub_box[index]]
+        imgs_sub_boxes.extend([pool_g.sub_box[idx] for idx in indices.flatten()])
+        
+        
+        imgs_obj_boxes = None
+        
+        if args.mode=='spatial':
+            imgs_obj_boxes = [pool_e.obj_box[index]]
+            imgs_obj_boxes.extend([pool_g.obj_box[idx] for idx in indices.flatten()])
         
 
-def plot_query_retrieval(imgs_retrieval, outFile):
+        figures_gen.append([temp, imgs_sub_boxes, imgs_obj_boxes])
+
+    fig = plot_query_retrieval(figures_gen, None, args)
+        
+    return fig
+
+def draw_bounding_box(image, sub_box, obj_box):
+        
+    x1,y1,x2,y2 = sub_box
+    x1 = int(x1.item()); x2 = int(x2.item()); y1 = int(y1.item()); y2 = int(y2.item())
+    img1 = cv2.rectangle(image.copy(),(x1,y1),(x2,y2),(0,255,0),2)
+    
+    if not obj_box==None:
+        x1,y1,x2,y2 = obj_box
+        x1 = int(x1.item()); x2 = int(x2.item()); y1 = int(y1.item()); y2 = int(y2.item())
+        img = cv2.rectangle(img1.copy(),(x1,y1),(x2,y2),(255,0,0),2)
+        return img
+    
+    return img
+        
+
+def plot_query_retrieval(imgs_retrieval, outFile, args):
+#     st()
     n_retrieval = len(imgs_retrieval)
     fig = plt.figure(figsize=(20, 4))
     for idx in range(n_retrieval):
         for im in range(0, 11):
             ax = fig.add_subplot(n_retrieval, 11, 11*idx+im+1,xticks=[], yticks=[])
-            ax.imshow(imgs_retrieval[idx][im])
-            if im==0:
+            if args.mode=='node':
+                im_to_plot = draw_bounding_box(imgs_retrieval[idx][0][im], imgs_retrieval[idx][1][im], None)
+            else:
+                im_to_plot = draw_bounding_box(imgs_retrieval[idx][0][im], imgs_retrieval[idx][1][im], imgs_retrieval[idx][2][im])
+            if im==0: 
                 ax.set_title('Query')
             else:
                 ax.set_title('Top_'+str(im))
+            ax.imshow(im_to_plot)
     plt.close(fig)
     return fig
         
