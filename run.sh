@@ -11,21 +11,21 @@ python train.py --batch-size 5 \
 python train.py --batch-size 5 \
                 --seed 0 \
                 --exp-dir two_obj_spatial_without_pretrained \
-                --epochs 300 \
-                --warmup-epoch 10 \
+                --epochs 350 \
+                --warmup-epoch 150 \
                 --num-cluster 200 \
                 --moco_r 100 \
                 --hyp_N 2 \
                 --mode "spatial" \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt"
-                --use_pretrained 
+                --use_pretrained
                 
                 
 python train.py --batch-size 5 \
                 --seed 0 \
-                --exp-dir two_obj_spatial_node_pretrained \
-                --epochs 300 \
-                --warmup-epoch 60 \
+                --exp-dir two_obj_spatial_with_node_pretrained \
+                --epochs 350 \
+                --warmup-epoch 150 \
                 --num-cluster 200 \
                 --moco_r 100 \
                 --hyp_N 2 \
