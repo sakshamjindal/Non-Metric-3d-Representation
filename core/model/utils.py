@@ -105,5 +105,24 @@ def stack_features_across_batch(output_feature_list, mode="node"):
             
         return spatial_features
     
-    raise ValueError("Training mode not defined properly. It should be either 'node' or 'spatial'." )      
+    raise ValueError("Training mode not defined properly. It should be either 'node' or 'spatial'." ) 
+    
+
+def convert_indices(index,hyp_N, mode):
+    
+        if mode=="node":
+            num_embedding = hyp_N
+        elif mode=="spatial":
+            num_embedding = hyp_N**2
+        else:
+            raise ValueError("Mode not defined properly")
+            
+        new_index=[]
+
+        for i in index:
+            new_index = new_index + [i.item()*num_embedding + j for j in range(num_embedding)]
+
+        new_index = torch.tensor(new_index)
+        
+        return new_index
 

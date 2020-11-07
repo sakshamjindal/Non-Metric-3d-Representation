@@ -6,15 +6,28 @@ from tqdm import tqdm
 import random
 import matplotlib.pyplot as plt
 
-def compute_features(eval_loader, model, args):
+def compute_features(eval_loader, model, arg):
+    
+    if arg.mode=="node":
+        num_embedding = arg.hyp_N
+        
+    elif arg.mode=="spatial":
+        num_embedding = arg.hyp_N**2
+        
     print('Computing features...')
     model.eval()
-    features = torch.zeros(len(eval_loader.dataset),256).cuda()
-    for i, (feed_dict_q, metadata) in enumerate(eval_loader):
+    features = torch.zeros(len(eval_loader.dataset),num_embedding, 256).cuda()
+    print(features.shape)
+    for i, (feed_dict_q, metadata) in enumerate(tqdm(eval_loader)):
         with torch.no_grad():
             feat = model(feed_dict_q, None, metadata, is_eval=True)
+            feat = feat.reshape(-1,num_embedding, 256)
             index = metadata['index']
-            features[index] = feat    
+            features[index] = feat
+            
+    with torch.no_grad():
+        features = features.view(-1,256)
+        
     return features.cpu()
 
     
