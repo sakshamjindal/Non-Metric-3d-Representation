@@ -194,7 +194,7 @@ def run_training(args):
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
                 'optimizer' : optimizer.state_dict(),
-            }, is_best=False, filename='./tb_logs/{}/checkpoint_{}.pth.tar'.format(args.exp_dir, str(epoch))
+            }, is_best=False, filename='./tb_logs/{}/checkpoint_{}.pth.tar'.format(args.exp_dir, str(epoch)))
 
 
 
