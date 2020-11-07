@@ -37,8 +37,9 @@ class Encoder(nn.Module):
                                                         nn.ReLU(),
                                                         nn.Linear(512,self.dim))
 
-        if self.mode=="spatial":
-            self.set_parameter_requires_grad()
+#         if self.mode=="spatial":
+#             print("freezing feature extractor encoder")
+#             self.set_parameter_requires_grad()
 
     def set_parameter_requires_grad(self):
         self.feature_extractor.requires_grad = False
