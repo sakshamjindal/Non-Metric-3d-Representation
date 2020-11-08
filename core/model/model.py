@@ -29,8 +29,8 @@ class MoCo_scene_and_view(nn.Module):
         """
         super(MoCo, self).__init__()
 
-        self.scene_r = r
-        self.view_r = r
+        self.scene_r = scene_r
+        self.view_r = view_r
         self.m = m
         self.T = T
         self.mode = mode
@@ -45,12 +45,12 @@ class MoCo_scene_and_view(nn.Module):
 
         # create the scene queue
         self.register_buffer("queue_scene", torch.randn(dim, scene_r))
-        self.queue = nn.functional.normalize(self.queue_scene, dim=0)
+        self.queue_scene = nn.functional.normalize(self.queue_scene, dim=0)
         self.register_buffer("queue_scene_ptr", torch.zeros(1, dtype=torch.long))
 
         # create the view queue
         self.register_buffer("queue_view", torch.randn(dim, view_r))
-        self.queue = nn.functional.normalize(self.queue_view, dim=0)
+        self.queue_view = nn.functional.normalize(self.queue_view, dim=0)
         self.register_buffer("queue_view_ptr", torch.zeros(1, dtype=torch.long))
 
     @torch.no_grad()
@@ -166,7 +166,7 @@ class MoCo_scene_and_view(nn.Module):
         # positive logits: Nx1
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
         # negative logits: Nxr
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
+        l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
 
         # logits: Nx(1+r)
         logits = torch.cat([l_pos, l_neg], dim=1)
@@ -218,7 +218,7 @@ class MoCo_scene_and_view(nn.Module):
             return logits, labels, None, None
 
 
-    def view_forward(self, feed_dict_q, feed_dict_k=None, feed_dicts_N=None, is_eval=False):
+    def view_forward(self, feed_dict_q, feed_dict_k=None, metadata=None, feed_dicts_N=None, is_eval=False):
         """
         Input:
             feed_dict_q: a batch of query images and bounding boxes
@@ -284,7 +284,7 @@ class MoCo_scene_and_view(nn.Module):
         # positive logits: Nx1
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
         # negative logits: Nxr
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
+        l_neg = torch.einsum('nc,ck->nk', [q, self.queue_view.clone().detach()])
 
         # logits: Nx(1+r)
         logits = torch.cat([l_pos, l_neg], dim=1)

@@ -47,6 +47,7 @@ parser.add_argument('--ret_freq', default=5, type=int,metavar='N', help='visuali
 parser.add_argument('-r', '--moco_r', default=35, type=int, help='size of queue (make sure that it is multiple of batch size)')
 parser.add_argument('--hyp_N', default=1, type=int, help='maximum number of objects in per scene')
 parser.add_argument('--mode', default=None, type=str,help='node or spatial')
+parser.add_argument('--scene_wt', default=1e-1, type=float, help='importance for scene_loss (default: 1e-4)')
 
 if not os.path.exists('tb_logs'):
     os.makedirs('tb_logs')

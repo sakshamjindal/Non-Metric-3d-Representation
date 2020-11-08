@@ -34,8 +34,8 @@ from torch.utils.data import DataLoader
 
 # Cell
 
-from .model.model import MoCo
-from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery
+from .model.model import MoCo_scene_and_view as MoCo
+from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery, sample_same_scene_negs
 from .utils import compute_features, run_kmeans, AverageMeter, ProgressMeter, adjust_learning_rate, accuracy, save_checkpoint, DoublePool_O, store_to_pool, random_retrieve_topk, plot_query_retrieval
 
 # Cell
@@ -204,7 +204,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
-    acc_inst = AverageMeter('Acc@Inst', ':6.2f')
+    acc_inst_scene = AverageMeter('Acc@Inst', ':6.2f')
+    acc_inst_view = AverageMeter('Acc@Inst', ':6.2f')
     acc_proto = AverageMeter('Acc@Proto', ':6.2f')
 
     progress = ProgressMeter(
@@ -221,13 +222,13 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         data_time.update(time.time() - end)
 
 
+        ''' metric_learning_scene '''
         # compute output
         index = metadata["index"]
         output, target, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index)
 
-
         # InfoNCE loss
-        loss = criterion(output, target)
+        scene_loss = criterion(output, target)
 
         # ProtoNCE loss
         if output_proto is not None:
@@ -239,11 +240,26 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
 
             # average loss across all sets of prototypes
             loss_proto /= len(args.num_cluster)
-            loss += loss_proto
+            scene_loss += loss_proto
 
-        losses.update(loss.item(), args.batch_size)
         acc = accuracy(output, target)[0]
-        acc_inst.update(acc[0], args.batch_size)
+        acc_inst_scene.update(acc[0], args.batch_size)
+
+        ''' metric_learning_view '''
+        # compute output
+        index = metadata["index"]
+        feed_dict_n_lists = sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, args.hyp_N, 16)[0]
+
+        output, target, _, _ = model.view_forward(feed_dict_q, feed_dict_k, metadata, feed_dict_n_lists)
+
+        # InfoNCE loss
+        view_loss = criterion(output, target)
+
+        acc = accuracy(output, target)[0]
+        acc_inst_view.update(acc[0], args.batch_size)
+
+        loss = args.scene_wt*scene_loss + view_loss
+        losses.update(loss.item(), args.batch_size)
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
