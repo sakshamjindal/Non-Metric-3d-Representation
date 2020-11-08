@@ -16,7 +16,7 @@ import core.utils_vox as utils_vox
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-
+from torch.utils.data import DataLoader
 import cv2
 from matplotlib import cm
 import matplotlib
@@ -680,19 +680,227 @@ class CLEVR_train_onlyquery(Dataset):
 
 
 
-# if __name__ == '__main__':
-	
-# 	train_dataset = GQNDataset_pdisco(root_dir='/home/mprabhud/dataset/clevr_veggies/npys/be_lt.txt')
-# 	from torch.utils.data import DataLoader
-# 	train_loader = DataLoader(train_dataset, batch_size=5, shuffle=True, collate_fn=collate_boxes)
+####################################################
+# DATALOAER FOR SAMPLINg NEG ViEWS FROM SAME SCENE #
+####################################################
 
-# 	for b in train_loader:
-# 	    query_image, key_image, query_viewpoint, key_viewpoint, metadata = b
-# 	    break
 
-#     f, axarr = plt.subplots(5,2)
-#     for row in range(5):
-#         axarr[row,0].imshow(feed_dict_q['images'][row].permute(1,2,0))
-#         axarr[row,1].imshow(feed_dict_k['images'][row].permute(1,2,0))
+class CLEVR_train_sampleallnegs(Dataset):
+	def __init__(self, scene_path, hyp_N=1, transform=None, target_transform=None, few_shot=False, scene_num=0, query_num=0, key_num=1):
+		self.scene_path = scene_path
 
+		self.target_res = 256
+		self.N = hyp_N
+
+		self.views = 18
+		self.query_num = query_num
+		self.key_num = key_num
+		self.scene_num = scene_num
+ 
+		self.do_shape = True
+		self.do_color = False
+		self.do_material = False
+		self.do_style = False
+		self.do_style_content = False
+
+	def trees_rearrange(self, trees):
+		updated_trees =[]
+		all_bboxes = []
+		all_scores = []
+		all_classes_list = []
+		for tree in trees:
+			tree,boxes,_,all_classes = self.bbox_rearrange(tree,boxes=[],classes={},all_classes=[])
+			if self.do_shape:
+				classes = [class_val["shape"] for class_val  in all_classes]
+			elif self.do_color:
+				classes = [class_val["color"] for class_val  in all_classes]
+			elif self.do_material:
+				classes = [class_val["material"] for class_val  in all_classes]
+			elif self.do_style:
+				classes = [class_val["color"]+"_"+ class_val["material"] for class_val  in all_classes]
+			elif self.do_style_content:
+				classes = [class_val["shape"]+"/"+class_val["color"]+"_"+ class_val["material"] for class_val  in all_classes]
+			elif self.do_color_content:            
+				classes = [class_val["shape"]+"/"+class_val["color"] for class_val  in all_classes]
+			elif self.do_material_content:            
+				classes = [class_val["shape"]+"/"+ class_val["material"] for class_val  in all_classes]
+			else:            
+				classes = [class_val["shape"]+"/"+ class_val["color"] +"_"+class_val["material"] for class_val  in all_classes]
+			boxes = np.stack(boxes)
+			classes = np.stack(classes)
+			n,_  = boxes.shape 
+			assert n == len(classes)
+			scores = np.pad(np.ones([n]),[0,self.N-n])
+			boxes = np.pad(boxes,[[0,self.N-n],[0,0]])
+			classes = np.pad(classes,[0,self.N-n])
+			updated_trees.append(tree)
+			all_classes_list.append(classes)
+			all_scores.append(scores)
+			all_bboxes.append(boxes)
+		all_bboxes = np.stack(all_bboxes)
+		all_scores = np.stack(all_scores)
+		all_classes_list = np.stack(all_classes_list)
+		return all_bboxes,all_scores,all_classes_list
+
+	def bbox_rearrange(self, tree,boxes= [],classes={},all_classes=[]):
+		for i in range(0, tree.num_children):
+			updated_tree,boxes,classes,all_classes = self.bbox_rearrange(tree.children[i],boxes=boxes,classes=classes,all_classes=all_classes)
+			tree.children[i] = updated_tree     
+		if tree.function == "describe":
+			xmax,ymax,zmin,xmin,ymin,zmax = tree.bbox_origin
+			box = np.array([xmin,ymin,zmin,xmax,ymax,zmax])
+			tree.bbox_origin = box
+			boxes.append(box)
+			classes["shape"] = tree.word
+			all_classes.append(classes)
+			classes = {}
+		if tree.function == "combine":
+			if "large" in tree.word or "small" in tree.word:
+				classes["size"] = tree.word
+			elif "metal" in tree.word or "rubber" in tree.word:
+				classes["material"] = tree.word
+			else:
+				classes["color"] = tree.word
+		return tree,boxes,classes,all_classes
+
+	def __len__(self):
+		return self.views
+
+	def __getitem__(self, idx):
+		
+		hyp_B = 1
+		hyp_S = 1
+		hyp_N = self.N
+
+		__p = lambda x: utils_disco.pack_seqdim(x, hyp_B)
+		__u = lambda x: utils_disco.unpack_seqdim(x, hyp_B)
+		__pb = lambda x: utils_disco.pack_boxdim(x, hyp_N)
+		__ub = lambda x: utils_disco.unpack_boxdim(x, hyp_N)
+		
+		Z, Y, X = 144, 144, 144
+		Z2, Y2, X2 = int(Z/2), int(Y/2), int(X/2)
+		Z4, Y4, X4 = int(Z/4), int(Y/4), int(X/4)
+		
+		######## Get query and key index #########################
+		
+		scene_num = self.scene_num
+		
+		query_idx = idx
+		
+
+# 		scene_path = self.all_files[scene_num]
+		data = pickle.load(open(self.scene_path, "rb"))
+		
+		###### Take necessary matrices from data dict ############
+		
+		tids = torch.from_numpy(np.reshape(np.arange(hyp_B*hyp_N),[hyp_B,hyp_N]))
+		pix_T_cams = torch.from_numpy(data["pix_T_cams_raw"][query_idx]).reshape(hyp_B, hyp_S, 4, 4).cuda()
+		
+		camRs_T_origin = data['camR_T_origin_raw'][query_idx]
+		camRs_T_origin = torch.from_numpy(camRs_T_origin).reshape(hyp_B, hyp_S, 4, 4).cuda()
+		
+		origin_T_camRs = __u(utils_disco.safe_inverse(__p(camRs_T_origin)))
+		
+		origin_T_camXs = torch.from_numpy(data['origin_T_camXs_raw'][query_idx]).reshape(hyp_B, hyp_S, 4, 4).cuda()
+		camX0_T_camXs = utils_disco.get_camM_T_camXs(origin_T_camXs, ind=0)
+		camRs_T_camXs = __u(torch.matmul(utils_disco.safe_inverse(__p(origin_T_camRs)), __p(origin_T_camXs))) 
+
+
+		camXs_T_camRs = __u(utils_disco.safe_inverse(__p(camRs_T_camXs)))
+		camX0_T_camRs = camXs_T_camRs[:,0]
+		
+		camR_T_camX0  = utils_disco.safe_inverse(camX0_T_camRs)
+										  
+		rgb_camXs = data["rgb_camXs_raw"][:,:,:,:3]
+		rgb_camX0 = torch.from_numpy(rgb_camXs[query_idx]).permute(2,0,1).reshape(hyp_B, 3, 256, 256) #torch.from_numpy(np.fliplr(rgb_camXs[0,0])).reshape(1, 256, 256, 3).permute(0,3,1,2)
+								
+										  
+		############ load tree file ##############################
+		
+		tree_path = data['tree_seq_filename'].replace("shamitl","mprabhud")
+		tree_path = tree_path.replace("datasets","dataset")
+		tree_file = pickle.load(open(os.path.join(tree_path),"rb"))
+										  
+		gt_boxesR,scores,classes = self.trees_rearrange([tree_file])
+		
+		########### set up gt boxes #############################
+										  
+		gt_boxesR = torch.from_numpy(gt_boxesR).cuda().float() # torch.Size([2, 3, 6])
+		gt_boxesR_end = torch.reshape(gt_boxesR,[hyp_B,hyp_N,2,3])
+		gt_boxesR_theta = utils_disco.get_alignedboxes2thetaformat(gt_boxesR_end)
+		gt_boxesR_corners = utils_disco.transform_boxes_to_corners(gt_boxesR_theta)
+										  
+		gt_boxesRMem_corners = __ub(utils_vox.Ref2Mem(__pb(gt_boxesR_corners),Z2,Y2,X2))
+		gt_boxesRMem_end = utils_disco.get_ends_of_corner(gt_boxesRMem_corners) 
+		
+		gt_boxesRMem_theta = utils_disco.transform_corners_to_boxes(gt_boxesRMem_corners)
+		gt_boxesRUnp_corners = __ub(utils_vox.Ref2Mem(__pb(gt_boxesR_corners),Z,Y,X))
+										  
+		gt_boxesRUnp_end = utils_disco.get_ends_of_corner(gt_boxesRUnp_corners)
+										  
+		gt_boxesX0_corners = __ub(utils_disco.apply_4x4(camX0_T_camRs, __pb(gt_boxesR_corners)))
+
+										  
+		gt_boxesXs_corners = __u(__ub(utils_disco.apply_4x4(__p(camXs_T_camRs), __p(__pb(gt_boxesR_corners).unsqueeze(1).repeat(1,hyp_S,1,1)) )))
+		gt_boxesXs_end = __u(utils_disco.get_ends_of_corner(__p(gt_boxesXs_corners)))
+										  
+		gt_boxesX0Mem_corners = __ub(utils_vox.Ref2Mem(__pb(gt_boxesX0_corners),Z2,Y2,X2))
+		gt_boxesX0Mem_theta = utils_disco.transform_corners_to_boxes(gt_boxesX0Mem_corners)
+		gt_boxesX0Mem_end = utils_disco.get_ends_of_corner(gt_boxesX0Mem_corners)
+		gt_boxesX0_end = utils_disco.get_ends_of_corner(gt_boxesX0_corners)  
+										  
+		gt_cornersX0_pix = __ub(utils_disco.apply_pix_T_cam(pix_T_cams[:,0], __pb(gt_boxesX0_corners)))
+
+										  
+		########### gt egomotion #############################################
+
+		################# get bbobex on image    ##############################
+		boxes_vis_q, corners_pix_q = summ_box_by_corners(rgb_camX0, gt_boxesX0_corners, torch.from_numpy(scores), tids, pix_T_cams[:, 0])
+
+		boxes_q = torch.zeros([hyp_N, 4])
+
+		for n in range(hyp_N):
+			boxes_q[n][0] = torch.min(corners_pix_q[0, n, :, 0]) 
+			boxes_q[n][1] = torch.min(corners_pix_q[0, n, :, 1]) 
+			boxes_q[n][2] = torch.max(corners_pix_q[0, n, :, 0]) 
+			boxes_q[n][3] = torch.max(corners_pix_q[0, n, :, 1])
+
+
+			
+		return (rgb_camX0/255.).squeeze(), hyp_N, boxes_q, boxes_vis_q.squeeze(), scene_num, query_idx, pix_T_cams.squeeze(), origin_T_camXs.squeeze(), idx, self.scene_path
+
+
+def sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, hyp_N, views_to_sample = 16):
+    assert views_to_sample <= 16
+    
+    B = feed_dict_q['images'].shape[0]
+    
+    full_list = []
+    
+    for b in range(B):
+        scene_path = metadata['scene_path'][b]
+        q_idx = metadata["query_image_index"][b]
+        k_idx = metadata["key_image_index"][b]
+        scene_num = metadata["scene_number"][b]
+
+        neg_dataset = CLEVR_train_sampleallnegs(scene_path, hyp_N=hyp_N, scene_num=scene_num, query_num=q_idx, key_num=k_idx)
+        neg_loader = DataLoader(neg_dataset, batch_size=1, shuffle=True, collate_fn=collate_boxes_onlyquery)
+
+        feed_dict_n_list = []
+        views_fetched = 1
+
+        for i in neg_loader:
+            if views_fetched>views_to_sample:
+                break
+
+            feed_dict_n, m = i
+            if (m['index'] == q_idx) or (m['index'] == k_idx):
+                continue
+            feed_dict_n_list.append(feed_dict_n)
+            
+        full_list.append(feed_dict_n_list)
+    return full_list 
+        
+    
+    
 
