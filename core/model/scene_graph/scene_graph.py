@@ -29,6 +29,7 @@ class SceneGraph(nn.Module):
 
 #         self.object_feature_fuse = nn.Conv2d(feature_dim * 2, output_dims[0], 1)
         self.relation_feature_fuse = nn.Conv2d(feature_dim // 2 * 3 + output_dims[0] * 2, output_dims[1], 1)
+#         self.relation_feature_fuse = nn.Conv2d(feature_dim // 2 * 3, output_dims[1], 1)
 
         self.object_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[0] * self.pool_size ** 2, output_dims[0]))
         self.relation_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[1] * self.pool_size ** 2, output_dims[1]))

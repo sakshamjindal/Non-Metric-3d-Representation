@@ -19,7 +19,7 @@ class MoCo_scene_and_view(nn.Module):
     Build a MoCo model with: a query encoder, a key encoder, and a queue
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, base_encoder=None, dim=256, scene_r=35, view_r = 40, m=0.999, T=0.1, mlp=False, mode=None):
+    def __init__(self, dim=256, scene_r=35, view_r = 40, m=0.999, T=0.1, mlp=False, mode=None):
         """
         dim: feature dimension (default: 128)
         r: queue size; number of negative samples/prototypes (default: 16384)
@@ -27,7 +27,7 @@ class MoCo_scene_and_view(nn.Module):
         T: softmax temperature
         mlp: whether to use mlp projection
         """
-        super(MoCo, self).__init__()
+        super(MoCo_scene_and_view, self).__init__()
 
         self.scene_r = scene_r
         self.view_r = view_r
@@ -72,7 +72,7 @@ class MoCo_scene_and_view(nn.Module):
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue_scene[:, ptr:ptr + batch_size] = keys.T
-        ptr = (ptr + batch_size) % self.r  # move pointer
+        ptr = (ptr + batch_size) % self.scene_r  # move pointer
 
         if self.scene_r % batch_size != 0:
             ptr=0
@@ -88,12 +88,12 @@ class MoCo_scene_and_view(nn.Module):
         #removes for now
 #         assert self.r % batch_size == 0  # for simplicity
 
-        if ptr + batch_size>=self.r:
-            ptr=0
+#         if ptr + batch_size>=self.view_r:
+#             ptr=0
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue_view[:, ptr:ptr + batch_size] = keys.T
-        ptr = (ptr + batch_size) % self.r  # move pointer
+        ptr = (ptr + batch_size) % self.view_r  # move pointer
 
         self.queue_view_ptr[0] = ptr
 
@@ -137,18 +137,11 @@ class MoCo_scene_and_view(nn.Module):
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()  # update the key encoder
 
-#             # shuffle for making use of BN
-#             im_k, idx_unshuffle = self._batch_shuffle_ddp(im_k)
-
             k_outputs = self.encoder_k(feed_dict_k, rel_viewpoint)
-            #k = nn.functional.normalize(k, dim=1)    # not needed scene graph does that already
 
-#             # undo shuffle
-#             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
         # compute query features
         q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
-        #q = nn.functional.normalize(q, dim=1)
 
 #         k,q = pair_embeddings(k_outputs, q_outputs, mode)
         k,q = k_outputs, q_outputs
@@ -196,7 +189,7 @@ class MoCo_scene_and_view(nn.Module):
 
                 #print(len(pos_prototypes), len(all_proto_id))
                 neg_proto_id = set(all_proto_id)-set(pos_proto_id.tolist())
-                neg_proto_id = sample(neg_proto_id,self.r) #sample r negative prototypes
+                neg_proto_id = sample(neg_proto_id,self.scene_r) #sample r negative prototypes
                 neg_prototypes = prototypes[neg_proto_id]
 
                 proto_selected = torch.cat([pos_prototypes,neg_prototypes],dim=0)
@@ -260,6 +253,7 @@ class MoCo_scene_and_view(nn.Module):
             #compute key features
             k_outputs = self.encoder_k(feed_dict_k, rel_viewpoint)
 
+
         # compute query features
         q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
 
@@ -275,7 +269,8 @@ class MoCo_scene_and_view(nn.Module):
             k = nn.functional.normalize(k, dim=1)
 
         with torch.no_grad():
-            for feed_dict in range(feed_dicts_N):
+            self.queue_view_ptr[0] = 0
+            for feed_dict in feed_dicts_N:
                 scene_negatives = self.forward(feed_dict_q=feed_dict, is_eval=True)
                 self._dequeue_and_enqueue_view(scene_negatives)
 
@@ -295,7 +290,7 @@ class MoCo_scene_and_view(nn.Module):
         # labels: positive key indicators
         labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
-        # dequeue and enqueue
-        self._dequeue_and_enqueue_view(k)
+#         # dequeue and enqueue
+#         self._dequeue_and_enqueue_view(k)
 
         return logits, labels, None, None
