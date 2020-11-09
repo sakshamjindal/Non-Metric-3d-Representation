@@ -48,7 +48,7 @@ python train.py --batch-size 1 \
                 --seed 0 \
                 --exp-dir two_obj_spatial_with_scene_and_view_loss_exp1 \
                 --epochs 350 \
-                --warmup-epoch 120 \
+                --warmup-epoch 150 \
                 --num-cluster 200 \
                 --scene_r 20 \
                 --view_r 65 \
@@ -139,4 +139,22 @@ python train.py --batch-size 1 \
                 --mode "spatial" \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
                 --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+                
+                
+----------------------------------------------------------------------------------------------------------------
 
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp5 \
+                --epochs 350 \
+                --warmup-epoch 120 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 65 \
+                --scene_wt 0.7 \
+                --view_wt 0.3 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
