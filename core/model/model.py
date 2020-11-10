@@ -97,7 +97,7 @@ class MoCo_scene_and_view(nn.Module):
 
         self.queue_view_ptr[0] = ptr
 
-    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None):
+    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None, is_viewpoint_eval=False):
         """
         Input:
             feed_dict_q: a batch of query images and bounding boxes
@@ -113,8 +113,17 @@ class MoCo_scene_and_view(nn.Module):
         mode = self.mode
         hyp_N = feed_dict_q["objects"][0].item()
 
+        rel_viewpoint = metadata["rel_viewpoint"]
+
         if mode=="node":
             rel_viewpoint=None
+
+        if is_viewpoint_eval:
+            k = self.encoder_k(feed_dict_q, rel_viewpoint)
+            k = stack_features_across_batch(k, mode)
+            k = nn.functional.normalize(k, dim=1)
+
+            return k
 
         if is_eval:
             # the output from encoder is a list of features from the batch where each batch element (image)
@@ -128,10 +137,6 @@ class MoCo_scene_and_view(nn.Module):
             k = nn.functional.normalize(k, dim=1)
             return k
 
-        rel_viewpoint = metadata["rel_viewpoint"]
-
-        if mode=="node":
-            rel_viewpoint=None
 
         # compute key features
         with torch.no_grad():  # no gradient to keys

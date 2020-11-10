@@ -61,7 +61,7 @@ class Encoder(nn.Module):
         for batch_ind,(_, spatial_embeddings) in enumerate(scene_embeddings):
             num_obj_x = spatial_embeddings.shape[0]
             num_obj_y = spatial_embeddings.shape[1]
-
+            
             # Broadcast view to spatial embedding dimension
             view_spatial = view[batch_ind].unsqueeze(0).repeat(num_obj_x, num_obj_y, 1)
             # Concatenate with visual embeddings

@@ -321,9 +321,9 @@ class CLEVR_train(Dataset):
 		######## Get query and key index #########################
 		
 		scene_num = idx 
-		query_idx, key_idx = random.sample(range(0, self.views), 2)
+# 		query_idx, key_idx = random.sample(range(0, self.views), 2)
+		query_idx, key_idx = 0, random.sample(range(0, self.views), 1)[0]#; print(key_idx)
 		index = scene_num*self.views + query_idx
-		
 
 		scene_path = self.all_files[scene_num]
 		data = pickle.load(open(scene_path, "rb"))
@@ -605,7 +605,7 @@ class CLEVR_train_onlyquery(Dataset):
 		origin_T_camXs = torch.from_numpy(data['origin_T_camXs_raw'][query_idx]).reshape(hyp_B, hyp_S, 4, 4).cuda()
 		camX0_T_camXs = utils_disco.get_camM_T_camXs(origin_T_camXs, ind=0)
 		camRs_T_camXs = __u(torch.matmul(utils_disco.safe_inverse(__p(origin_T_camRs)), __p(origin_T_camXs))) 
-
+		print(origin_T_camXs)
 
 		camXs_T_camRs = __u(utils_disco.safe_inverse(__p(camRs_T_camXs)))
 		camX0_T_camRs = camXs_T_camRs[:,0]
