@@ -73,8 +73,6 @@ def run_training(args):
 
     args.num_cluster = args.num_cluster.split(',')
 
-    if not os.path.exists(args.exp_dir):
-        os.mkdir(args.exp_dir)
     if not os.path.exists(os.path.join('./tb_logs',args.exp_dir)):
         os.mkdir(os.path.join('./tb_logs', args.exp_dir))
 
@@ -115,7 +113,7 @@ def run_training(args):
 
     print('==> Making model..')
 
-    model = MoCo(mode=args.mode, r=args.moco_r)
+    model = MoCo(mode=args.mode, scene_r=args.scene_r, view_r=args.view_r)
     #model = nn.DataParallel(model)
     model = model.to(device)
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -189,7 +187,7 @@ def run_training(args):
 
         if (epoch+1)%5==0:
             val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
-        if (epoch+1)%50==0:
+        if (epoch+1)%100==0:
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
@@ -204,13 +202,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
+    scene_losses = AverageMeter('Scene Loss', ':.4e')
+    view_losses = AverageMeter('View Loss', ':.4e')
     acc_inst_scene = AverageMeter('Acc@Inst', ':6.2f')
     acc_inst_view = AverageMeter('Acc@Inst', ':6.2f')
     acc_proto = AverageMeter('Acc@Proto', ':6.2f')
 
     progress = ProgressMeter(
         len(train_loader),
-        [batch_time, data_time, losses, acc_inst, acc_proto],
+        [batch_time, data_time, losses, acc_inst_scene, acc_inst_view,  acc_proto],
         prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
@@ -258,8 +258,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         acc = accuracy(output, target)[0]
         acc_inst_view.update(acc[0], args.batch_size)
 
-        loss = args.scene_wt*scene_loss + view_loss
+        loss = args.scene_wt*scene_loss + args.view_wt*view_loss
+
+        scene_losses.update(scene_loss.item(), args.batch_size)
+        view_losses.update(view_loss.item(), args.batch_size)
         losses.update(loss.item(), args.batch_size)
+
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -279,12 +283,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
             progress.display(i)
 
     print("Logging to TB....")
-    tb_logger.add_scalar('Train Acc Inst', acc_inst.avg, epoch)
+    tb_logger.add_scalar('Train Acc Inst', acc_inst_scene.avg, epoch)
+    tb_logger.add_scalar('Train Acc Inst', acc_inst_view.avg, epoch)
     tb_logger.add_scalar('Train Acc Prototype', acc_proto.avg, epoch)
+    tb_logger.add_scalar('Scene Loss', scene_losses.avg, epoch)
+    tb_logger.add_scalar('View Loss', view_losses.avg, epoch)
     tb_logger.add_scalar('Train Total Loss', losses.avg, epoch)
 
     if epoch % args.ret_freq == 0:
-        figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=3)
+        figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=5)
         tb_logger.add_figure('Train Top10 Retrieval', figures, epoch)
 
 

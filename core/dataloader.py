@@ -162,7 +162,7 @@ def summ_box_by_corners(rgbR, corners, scores, tids, pix_T_cam, only_return=Fals
 ###############################################
 
 def collate_boxes(data):
-    query_image, num_boxes_q, boxes_q, boxes_viz_q, key_image, num_boxes_k, boxes_k, boxes_viz_k, scene_num, query_img_view, key_img_view, pix_T_cams_raw, camR_T_origin_raw, origin_T_camXs_raw, gt_egomotion, idx = zip(*data)
+    query_image, num_boxes_q, boxes_q, boxes_viz_q, key_image, num_boxes_k, boxes_k, boxes_viz_k, scene_num, query_img_view, key_img_view, pix_T_cams_raw, camR_T_origin_raw, origin_T_camXs_raw, gt_egomotion, idx, scene_path = zip(*data)
     batch_size = len(num_boxes_q)
     
 #     print(boxes_viz_q)
@@ -196,7 +196,7 @@ def collate_boxes(data):
     gt_egomotion = torch.stack(list(gt_egomotion), dim=0)
     
     
-    metadata = {"index": index, "scene_number":scene_num, "query_image_index":query_img_view,"key_image_index":key_img_view, "pix_T_cams_raw":torch.as_tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.as_tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.as_tensor(origin_T_camXs_raw).cuda(), "rel_viewpoint":torch.as_tensor(gt_egomotion).cuda()}
+    metadata = {"scene_path": scene_path, "index": index, "scene_number":scene_num, "query_image_index":query_img_view,"key_image_index":key_img_view, "pix_T_cams_raw":torch.as_tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.as_tensor(camR_T_origin_raw).cuda(), "origin_T_camXs_raw":torch.as_tensor(origin_T_camXs_raw).cuda(), "rel_viewpoint":torch.as_tensor(gt_egomotion).cuda()}
     feed_dict_q = {"images":torch.as_tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.as_tensor(object_boxes_q).cuda(), "images_with_boxes":torch.as_tensor(boxes_viz_q).cuda()}
     feed_dict_k = {"images":torch.as_tensor(key_image).cuda(), "objects":num_boxes_k, "objects_boxes":torch.as_tensor(object_boxes_k).cuda(), "images_with_boxes":torch.as_tensor(boxes_viz_k).cuda()}
     
@@ -229,7 +229,7 @@ class CLEVR_train(Dataset):
 		else:
 			self.all_files = [os.path.join(root_dir,f) for f in os.listdir(root_dir) if f.endswith('.p')]
 			
-		self.all_files.sort()
+		self.all_files.sort(); self.all_files = self.all_files[:10]
 			
 		print('Initialised.....',len(self.all_files),' files...')
 			
@@ -429,7 +429,7 @@ class CLEVR_train(Dataset):
 			boxes_k[n][3] = torch.max(corners_pix_k[0, n, :, 1])
 
             
-		return (rgb_camX0/255.).squeeze(), hyp_N, boxes_q, boxes_vis_q.squeeze(), (rgb_camX1/255.).squeeze(), hyp_N, boxes_k, boxes_vis_k.squeeze(), scene_num, query_idx, key_idx, pix_T_cams.squeeze(), camRs_T_origin.squeeze(), origin_T_camXs.squeeze(), rel_viewpoint, index
+		return (rgb_camX0/255.).squeeze(), hyp_N, boxes_q, boxes_vis_q.squeeze(), (rgb_camX1/255.).squeeze(), hyp_N, boxes_k, boxes_vis_k.squeeze(), scene_num, query_idx, key_idx, pix_T_cams.squeeze(), camRs_T_origin.squeeze(), origin_T_camXs.squeeze(), rel_viewpoint, index, scene_path
 
 
 
@@ -440,7 +440,7 @@ class CLEVR_train(Dataset):
 ###############################################
 
 def collate_boxes_onlyquery(data):
-    query_image, num_boxes_q, boxes_q, boxes_viz_q, scene_num, query_img_view, pix_T_cams_raw, camR_T_origin_raw, idx = zip(*data)
+    query_image, num_boxes_q, boxes_q, boxes_viz_q, scene_num, query_img_view, pix_T_cams_raw, camR_T_origin_raw, idx, scene_path= zip(*data)
     batch_size = len(num_boxes_q)
     
 #     print(torch.stack(list(query_image)))
@@ -462,7 +462,7 @@ def collate_boxes_onlyquery(data):
     camR_T_origin_raw = torch.stack(list(camR_T_origin_raw), dim=0)
     
     
-    metadata = {"index":idx, "query_image_index":query_img_view ,"scene_number":scene_num, "pix_T_cams_raw":torch.as_tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.as_tensor(camR_T_origin_raw).cuda()}
+    metadata = {"scene_path": scene_path, "index":idx, "query_image_index":query_img_view ,"scene_number":scene_num, "pix_T_cams_raw":torch.as_tensor(pix_T_cams_raw).cuda(), "camR_T_origin_raw":torch.as_tensor(camR_T_origin_raw).cuda()}
     feed_dict_q = {"images":torch.as_tensor(query_image).cuda(), "objects":num_boxes_q, "objects_boxes":torch.as_tensor(object_boxes_q).cuda(), "images_with_boxes": boxes_viz_q}
     
     return feed_dict_q, metadata
@@ -493,7 +493,7 @@ class CLEVR_train_onlyquery(Dataset):
 		else:
 			self.all_files = [os.path.join(root_dir,f) for f in os.listdir(root_dir) if f.endswith('.p')]
 			
-		self.all_files.sort()
+		self.all_files.sort(); self.all_files = self.all_files[:10]
 			
 		print('Initialised.....',len(self.all_files)*self.views,' files...')
 			
@@ -668,7 +668,7 @@ class CLEVR_train_onlyquery(Dataset):
 
 
             
-		return (rgb_camX0/255.).squeeze(), hyp_N, boxes_q, boxes_vis_q.squeeze(), scene_num, query_idx, pix_T_cams.squeeze(), origin_T_camXs.squeeze(), idx
+		return (rgb_camX0/255.).squeeze(), hyp_N, boxes_q, boxes_vis_q.squeeze(), scene_num, query_idx, pix_T_cams.squeeze(), origin_T_camXs.squeeze(), idx, scene_path
 
 
 
