@@ -253,7 +253,6 @@ class MoCo_scene_and_view(nn.Module):
             #compute key features
             k_outputs = self.encoder_k(feed_dict_k, rel_viewpoint)
 
-
         # compute query features
         q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
 
@@ -268,11 +267,18 @@ class MoCo_scene_and_view(nn.Module):
         with torch.no_grad():
             k = nn.functional.normalize(k, dim=1)
 
+        # getting encoding for scene_negatives
         with torch.no_grad():
             self.queue_view_ptr[0] = 0
-            for feed_dict in feed_dicts_N:
-                scene_negatives = self.forward(feed_dict_q=feed_dict, is_eval=True)
+            for feed_dict_ in feed_dicts_N:
+                k_n = self.encoder_k(feed_dict_)
+                # encoder output features in the list are stacked to form a tensor of features across the batch
+                k_n = stack_features_across_batch(k_n, mode)
+                # normalize feature across the batch
+                scene_negatives = nn.functional.normalize(k_n, dim=1)
+                # append negagives to queue_view
                 self._dequeue_and_enqueue_view(scene_negatives)
+
 
         # compute logits
         # Einstein sum is more intuitive

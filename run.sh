@@ -142,7 +142,7 @@ python train.py --batch-size 1 \
                 
                 
 ----------------------------------------------------------------------------------------------------------------
-
+Exp 5
 
 python train.py --batch-size 1 \
                 --seed 0 \
@@ -154,6 +154,83 @@ python train.py --batch-size 1 \
                 --view_r 65 \
                 --scene_wt 0.7 \
                 --view_wt 0.3 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+
+----------------------------------------------------------------------------------------------------------------
+Exp 6
+
+Warmig up the scene model for 70 epochs and then adding the view loss
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp6 \
+                --epochs 350 \
+                --warmup-epoch 200 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 65 \
+                --scene_wt 0.2 \
+                --view_wt 0.8 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+                
+                
+                
+-------------------------------------------------------------------------------------------------------------------
+
+Exp 7
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp7 \
+                --epochs 350 \
+                --warmup-epoch 120 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 65 \
+                --scene_wt 0.15 \
+                --view_wt 0.85 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+                
+------------------------------------------------------------------------------------------------------------
+Exp 8 -- train for longer epochs without introducing PCL loss
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp5 \
+                --epochs 350 \
+                --warmup-epoch 120 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 65 \
+                --scene_wt 0.7 \
+                --view_wt 0.3 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+                
+                
+-------------------------------------------------------------------------------------------------------------------
+Exp 9 -- train
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp7 \
+                --epochs 350 \
+                --warmup-epoch 3 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 65 \
+                --scene_wt 0.15 \
+                --view_wt 0.85 \
                 --hyp_N 2 \
                 --mode "spatial" \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
