@@ -206,7 +206,7 @@ python train.py --batch-size 1 \
                 --seed 0 \
                 --exp-dir two_obj_spatial_with_scene_and_view_loss_exp5 \
                 --epochs 350 \
-                --warmup-epoch 120 \
+                --warmup-epoch 350 \
                 --num-cluster 200 \
                 --scene_r 20 \
                 --view_r 65 \
@@ -225,7 +225,7 @@ python train.py --batch-size 1 \
                 --seed 0 \
                 --exp-dir two_obj_spatial_with_scene_and_view_loss_exp7 \
                 --epochs 350 \
-                --warmup-epoch 3 \
+                --warmup-epoch 350 \
                 --num-cluster 200 \
                 --scene_r 20 \
                 --view_r 65 \
