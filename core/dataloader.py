@@ -896,8 +896,9 @@ def sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, hyp_N, views_to_s
             feed_dict_n, m = i
             if (m['index'] == q_idx) or (m['index'] == k_idx):
                 continue
-            feed_dict_n_list.append(feed_dict_n)
-            
+#             feed_dict_n_list.append(feed_dict_n)
+            feed_dict_n_list.append([feed_dict_n, m["index"]])
+        
         full_list.append(feed_dict_n_list)
     return full_list 
         
