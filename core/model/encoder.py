@@ -33,9 +33,6 @@ class Encoder(nn.Module):
                                  downsample_rate=16,
                                  mode=self.mode)
 
-        self.spatial_viewpoint_transformation = nn.Sequential(nn.Linear(263,512),
-                                                        nn.ReLU(),
-                                                        nn.Linear(512,self.dim))
 
         if self.mode=="spatial":
             print("freezing feature extractor encoder")
@@ -43,54 +40,6 @@ class Encoder(nn.Module):
 
     def set_parameter_requires_grad(self):
         self.feature_extractor.requires_grad = False
-
-    def merge_pose_with_scene_embeddings(self,
-                                     scene_embeddings,
-                                     view=None):
-        '''
-        Input
-            scene_embeddings: output of scene_graph module. A list of of tensors containing node and
-                              spatial embeddings of each batch element
-            view : a tensor of size [batch, 1, 7] containing information of relative egomotion
-                   between the two camera viewpoints
-            transform_node and transform spatial: boolean flags whether to do any transformation on nodes or not
-        Output
-            scene_embeddings: concatenated with pose vectors
-        '''
-
-        for batch_ind,(_, spatial_embeddings) in enumerate(scene_embeddings):
-            num_obj_x = spatial_embeddings.shape[0]
-            num_obj_y = spatial_embeddings.shape[1]
-            
-            # Broadcast view to spatial embedding dimension
-            view_spatial = view[batch_ind].unsqueeze(0).repeat(num_obj_x, num_obj_y, 1)
-            # Concatenate with visual embeddings
-            pose_with_features = torch.cat((view_spatial,spatial_embeddings), dim=2)
-            # Reassign the scene embeddings
-            scene_embeddings[batch_ind][1] = pose_with_features
-
-            ### To Do : Write some assertion test : (Saksham)
-
-        return scene_embeddings
-
-    def do_viewpoint_transformation(self,
-                                    scene_embeddings,
-                                    transform_node=True,
-                                    transform_spatial=False):
-
-        '''
-        Input:
-            scene_embeddings: output of scene_graph module concatenated with pose. A list of of tensors containing node and
-                              spatial embeddings of each batch element
-            transform_node and transform spatial: boolean flags whether to do any transformation on nodes or not
-        Output:
-            scene_embeddings: viewpoint transformed embeddings
-        '''
-        for ind,(_, spatial_embeddings) in enumerate(scene_embeddings):
-            # Do viewpoint transformation on spatial embeddings
-            scene_embeddings[ind][1] = self.spatial_viewpoint_transformation(scene_embeddings[ind][1])
-
-        return scene_embeddings
 
     def forward(self,
                 feed_dict,
@@ -106,20 +55,19 @@ class Encoder(nn.Module):
             mode: should be either 'node' or 'spatial' depending on what feature you want to extract
         """
         mode = self.mode
-        num_batch = feed_dict["images"].shape[0]
-        num_total_nodes = feed_dict["objects"].sum().item()
 
         image_features = self.feature_extractor(feed_dict["images"])
         outputs = self.scene_graph(image_features, feed_dict["objects_boxes"], feed_dict["objects"])
 
-        if mode=="node":
-            return outputs
+        return outputs
+#         if mode=="node":
+#             return outputs
 
-        if mode=="spatial" and rel_viewpoint is not None:
-            outputs = self.merge_pose_with_scene_embeddings(outputs,rel_viewpoint)
-            outputs = self.do_viewpoint_transformation(outputs)
+#         if mode=="spatial" and rel_viewpoint is not None:
+#             outputs = self.merge_pose_with_scene_embeddings(outputs,rel_viewpoint)
+#             outputs = self.do_viewpoint_transformation(outputs)
 
-            return outputs
+#             return outputs
 
-        if mode=="spatial" and rel_viewpoint is None:
-            return outputs
+#         if mode=="spatial" and rel_viewpoint is None:
+#             return outputs

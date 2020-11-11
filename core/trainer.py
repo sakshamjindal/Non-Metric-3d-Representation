@@ -150,6 +150,21 @@ def run_training(args):
             del state_dict['queue']
             del state_dict['queue_ptr']
 
+            keys_to_delete = \
+            ["mode",
+             "encoder_q.spatial_viewpoint_transformation.0.weight",
+             "encoder_q.spatial_viewpoint_transformation.0.bias",
+             "encoder_q.spatial_viewpoint_transformation.2.weight",
+             "encoder_q.spatial_viewpoint_transformation.2.bias",
+             "encoder_k.spatial_viewpoint_transformation.0.weight",
+             "encoder_k.spatial_viewpoint_transformation.0.bias",
+             "encoder_k.spatial_viewpoint_transformation.2.weight",
+             "encoder_k.spatial_viewpoint_transformation.2.bias"]
+
+            for k in keys_to_delete:
+                    if k in state_dict.keys():
+                        del state_dict[k]
+
             model_dict = model.state_dict()
             model_dict.update(state_dict)
 
@@ -183,10 +198,9 @@ def run_training(args):
 
         train(moco_train_loader, model, criterion, optimizer, epoch, args, cluster_result, tb_logger, pool_e_train, pool_g_train)
 
+         #if (epoch+1)%5==0:
+             #val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
 
-
-        if (epoch+1)%5==0:
-            val_retrieval(moco_val_loader, model, epoch, args, tb_logger, pool_e_val, pool_g_val)
         if (epoch+1)%100==0:
             save_checkpoint({
                 'epoch': epoch + 1,
@@ -225,10 +239,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         ''' metric_learning_scene '''
         # compute output
         index = metadata["index"]
-        output, target, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index)
+        output_scene, target_scene, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index, forward_type="scene")
 
         # InfoNCE loss
-        scene_loss = criterion(output, target)
+        scene_loss = criterion(output_scene, target_scene)
 
         # ProtoNCE loss
         if output_proto is not None:
@@ -242,20 +256,20 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
             loss_proto /= len(args.num_cluster)
             scene_loss += loss_proto
 
-        acc = accuracy(output, target)[0]
+        acc = accuracy(output_scene, target_scene)[0]
         acc_inst_scene.update(acc[0], args.batch_size)
 
         ''' metric_learning_view '''
         # compute output
         index = metadata["index"]
-        feed_dict_n_lists = sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, args.hyp_N, 16)[0]
+        feed_dict_n_lists = sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, args.hyp_N, 2)[0]
 
-        output, target, _, _ = model.view_forward(feed_dict_q, feed_dict_k, metadata, feed_dict_n_lists)
+        output_view, target_view, _, _ = model(feed_dict_q, feed_dict_k, metadata, feed_dicts_N=feed_dict_n_lists, forward_type="view")
 
         # InfoNCE loss
-        view_loss = criterion(output, target)
+        view_loss = criterion(output_view, target_view)
 
-        acc = accuracy(output, target)[0]
+        acc = accuracy(output_view, target_view)[0]
         acc_inst_view.update(acc[0], args.batch_size)
 
         loss = args.scene_wt*scene_loss + args.view_wt*view_loss
@@ -290,10 +304,9 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
     tb_logger.add_scalar('View Loss', view_losses.avg, epoch)
     tb_logger.add_scalar('Train Total Loss', losses.avg, epoch)
 
-    if epoch % args.ret_freq == 0:
-        figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=5)
-        tb_logger.add_figure('Train Top10 Retrieval', figures, epoch)
-
+#     if epoch % args.ret_freq == 0:
+#         figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=5)
+#         tb_logger.add_figure('Train Top10 Retrieval', figures, epoch)
 
 # Cell
 
@@ -362,4 +375,3 @@ def val_retrieval(val_loader, model, epoch, args, tb_logger=None, pool_e=None, p
     tb_logger.add_figure('Validation Top10 Retrieval', figures, epoch)
 
     return
-

@@ -10,6 +10,8 @@ from random import sample
 import torch.nn as nn
 import torch
 
+import ipdb
+
 from .encoder import Encoder
 from .utils import pair_embeddings, stack_features_across_batch, convert_indices
 
@@ -34,10 +36,14 @@ class MoCo_scene_and_view(nn.Module):
         self.m = m
         self.T = T
         self.mode = mode
+        self.dim=dim
 
+        self.encoder_q = Encoder(dim = self.dim, mode=self.mode)
+        self.encoder_k = Encoder(dim = self.dim, mode=self.mode)
 
-        self.encoder_q = Encoder(dim = dim, mode=self.mode)
-        self.encoder_k = Encoder(dim = dim, mode=self.mode)
+        self.spatial_viewpoint_transformation = nn.Sequential(nn.Linear(263,512),
+                                                nn.ReLU(),
+                                                nn.Linear(512,self.dim))
 
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data.copy_(param_q.data)  # initialize
@@ -67,10 +73,6 @@ class MoCo_scene_and_view(nn.Module):
         batch_size = keys.shape[0]
 
         ptr = int(self.queue_scene_ptr)
-        #removes for now
-#         assert self.r % batch_size == 0  # for simplicity
-
-        # replace the keys at ptr (dequeue and enqueue)
         self.queue_scene[:, ptr:ptr + batch_size] = keys.T
         ptr = (ptr + batch_size) % self.scene_r  # move pointer
 
@@ -85,11 +87,6 @@ class MoCo_scene_and_view(nn.Module):
         batch_size = keys.shape[0]
 
         ptr = int(self.queue_view_ptr)
-        #removes for now
-#         assert self.r % batch_size == 0  # for simplicity
-
-#         if ptr + batch_size>=self.view_r:
-#             ptr=0
 
         # replace the keys at ptr (dequeue and enqueue)
         self.queue_view[:, ptr:ptr + batch_size] = keys.T
@@ -97,7 +94,39 @@ class MoCo_scene_and_view(nn.Module):
 
         self.queue_view_ptr[0] = ptr
 
-    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None, is_eval=False, cluster_result=None, index=None, is_viewpoint_eval=False):
+    def merge_pose_with_scene_embeddings(self,
+                                     scene_embeddings,
+                                     view=None):
+        '''
+        Input
+            scene_embeddings: output of scene_graph module. A list of of tensors containing node and
+                              spatial embeddings of each batch element
+            view : a tensor of size [batch, 1, 7] containing information of relative egomotion
+                   between the two camera viewpoints
+            transform_node and transform spatial: boolean flags whether to do any transformation on nodes or not
+        Output
+            scene_embeddings: concatenated with pose vectors
+        '''
+
+        for batch_ind,(_, spatial_embeddings) in enumerate(scene_embeddings):
+            num_obj_x = spatial_embeddings.shape[0]
+            num_obj_y = spatial_embeddings.shape[1]
+
+            # Broadcast view to spatial embedding dimension
+            view_spatial = view[batch_ind].unsqueeze(0).repeat(num_obj_x, num_obj_y, 1)
+            # Concatenate with visual embeddings
+            pose_with_features = torch.cat((view_spatial,spatial_embeddings), dim=2)
+            # Reassign the scene embeddings
+            scene_embeddings[batch_ind][1] = pose_with_features
+
+            ### To Do : Write some assertion test : (Saksham)
+
+        return scene_embeddings
+
+
+    def forward(self, feed_dict_q, feed_dict_k=None, metadata=None,
+                      is_eval=False, cluster_result=None, index=None,
+                      is_viewpoint_eval=False, feed_dicts_N=None, forward_type=None):
         """
         Input:
             feed_dict_q: a batch of query images and bounding boxes
@@ -105,7 +134,6 @@ class MoCo_scene_and_view(nn.Module):
             is_eval: return momentum embeddings (used for clustering)
             cluster_result: cluster assignments, centroids, and density
             index: indices for training samples
-            mode : should be either 'node' or 'spatial' depending on whether training for node or spatial embeddings
         Output:
             logits, targets, proto_logits, proto_targets
         """
@@ -118,8 +146,11 @@ class MoCo_scene_and_view(nn.Module):
         if mode=="node":
             rel_viewpoint=None
 
-        if is_viewpoint_eval:
-            k = self.encoder_k(feed_dict_q, rel_viewpoint)
+        if is_viewpoint_eval and mode=="spatial":
+            k = self.encoder_k(feed_dict_q)
+            k = self.merge_pose_with_scene_embeddings(k,rel_viewpoint) #merge
+            for batch_ind in range(len(k)):
+                k[batch_ind][1] = self.spatial_viewpoint_transformation(k[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
             k = stack_features_across_batch(k, mode)
             k = nn.functional.normalize(k, dim=1)
 
@@ -138,170 +169,120 @@ class MoCo_scene_and_view(nn.Module):
             return k
 
 
-        # compute key features
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()  # update the key encoder
+            k = self.encoder_k(feed_dict_k) # callculate the embeddings
 
-            k_outputs = self.encoder_k(feed_dict_k, rel_viewpoint)
-
-
-        # compute query features
-        q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
-
-#         k,q = pair_embeddings(k_outputs, q_outputs, mode)
-        k,q = k_outputs, q_outputs
+        # Do viewpoint transformation on embeddings if the pose is fed as input
+        if mode=="spatial" and rel_viewpoint is not None:
+            k = self.merge_pose_with_scene_embeddings(k,rel_viewpoint) #merge pose with spatial embeddings
+            for batch_ind in range(len(k)):
+                k[batch_ind][1] = self.spatial_viewpoint_transformation(k[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
 
         k = stack_features_across_batch(k, mode)
-        q = stack_features_across_batch(q, mode)
+        k = nn.functional.normalize(k, dim=1)
 
+        q = self.encoder_q(feed_dict_q)  # queries: NxC
+        #k,q = pair_embeddings(k_outputs, q_outputs, mode)
+        q = stack_features_across_batch(q, mode)
         q = nn.functional.normalize(q, dim=1)
 
-        with torch.no_grad():
-            k = nn.functional.normalize(k, dim=1)
 
-        # compute logits
-        # Einstein sum is more intuitive
-        # positive logits: Nx1
-        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
-        # negative logits: Nxr
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+        if forward_type=="scene":
+            # compute logits
+            # Einstein sum is more intuitive
+            # positive logits: Nx1
+            l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+            # negative logits: Nxr
+            l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
 
-        # logits: Nx(1+r)
-        logits = torch.cat([l_pos, l_neg], dim=1)
+            # logits: Nx(1+r)
+            logits = torch.cat([l_pos, l_neg], dim=1)
 
-        # apply temperature
-        logits /= self.T
+            # apply temperature
+            logits /= self.T
 
-        # labels: positive key indicators
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+            # labels: positive key indicators
+            labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
-        # dequeue and enqueue
-        self._dequeue_and_enqueue_scene(k)
+            # dequeue and enqueue
+            self._dequeue_and_enqueue_scene(k)
 
-        index = convert_indices(index,hyp_N, mode)
-
-        # prototypical contrast
-        if cluster_result is not None:
-            proto_labels = []
-            proto_logits = []
-            for n, (im2cluster,prototypes,density) in enumerate(zip(cluster_result['im2cluster'],cluster_result['centroids'],cluster_result['density'])):
-                # get positive prototypes
-                pos_proto_id = im2cluster[index]
-                pos_prototypes = prototypes[pos_proto_id]
-
-                # sample negative prototypes
-                all_proto_id = [i for i in range(im2cluster.max())]
-
-                #print(len(pos_prototypes), len(all_proto_id))
-                neg_proto_id = set(all_proto_id)-set(pos_proto_id.tolist())
-                neg_proto_id = sample(neg_proto_id,self.scene_r) #sample r negative prototypes
-                neg_prototypes = prototypes[neg_proto_id]
-
-                proto_selected = torch.cat([pos_prototypes,neg_prototypes],dim=0)
-
-                # compute prototypical logits
-                logits_proto = torch.mm(q,proto_selected.t())
-
-                # targets for prototype assignment
-                labels_proto = torch.linspace(0, q.size(0)-1, steps=q.size(0)).long().cuda()
-
-                # scaling temperatures for the selected prototypes
-                temp_proto = density[torch.cat([pos_proto_id,torch.LongTensor(neg_proto_id).cuda()],dim=0)]
-                logits_proto /= temp_proto
-
-                proto_labels.append(labels_proto)
-                proto_logits.append(logits_proto)
-            return logits, labels, proto_logits, proto_labels
-        else:
             return logits, labels, None, None
 
+            index = convert_indices(index,hyp_N, mode)
 
-    def view_forward(self, feed_dict_q, feed_dict_k=None, metadata=None, feed_dicts_N=None, is_eval=False):
-        """
-        Input:
-            feed_dict_q: a batch of query images and bounding boxes
-            feed_dict_k: a batch of key images and bounding boxes
-            is_eval: return momentum embeddings (used for clustering)
-            cluster_result: cluster assignments, centroids, and density
-            index: indices for training samples
-            mode : should be either 'node' or 'spatial' depending on whether training for node or spatial embeddings
-        Output:
-            logits, targets, proto_logits, proto_targets
-        """
-        mode = self.mode
-        hyp_N = feed_dict_q["objects"][0].item()
+            # prototypical contrast
+            if cluster_result is not None:
+                proto_labels = []
+                proto_logits = []
+                for n, (im2cluster,prototypes,density) in enumerate(zip(cluster_result['im2cluster'],cluster_result['centroids'],cluster_result['density'])):
+                    # get positive prototypes
+                    pos_proto_id = im2cluster[index]
+                    pos_prototypes = prototypes[pos_proto_id]
 
-        if mode=="node":
-            rel_viewpoint=None
+                    # sample negative prototypes
+                    all_proto_id = [i for i in range(im2cluster.max())]
 
-        if is_eval:
-            # the output from encoder is a list of features from the batch where each batch element (image)
-            # might contain different number of objects
-            k = self.encoder_k(feed_dict_q)
+                    #print(len(pos_prototypes), len(all_proto_id))
+                    neg_proto_id = set(all_proto_id)-set(pos_proto_id.tolist())
+                    neg_proto_id = sample(neg_proto_id,self.scene_r) #sample r negative prototypes
+                    neg_prototypes = prototypes[neg_proto_id]
 
-            # encoder output features in the list are stacked to form a tensor of features across the batch
-            k = stack_features_across_batch(k, mode)
+                    proto_selected = torch.cat([pos_prototypes,neg_prototypes],dim=0)
 
-            # normalize feature across the batch
-            k = nn.functional.normalize(k, dim=1)
-            return k
+                    # compute prototypical logits
+                    logits_proto = torch.mm(q,proto_selected.t())
 
-        rel_viewpoint = metadata["rel_viewpoint"]
+                    # targets for prototype assignment
+                    labels_proto = torch.linspace(0, q.size(0)-1, steps=q.size(0)).long().cuda()
 
-        if mode=="node":
-            rel_viewpoint=None
+                    # scaling temperatures for the selected prototypes
+                    temp_proto = density[torch.cat([pos_proto_id,torch.LongTensor(neg_proto_id).cuda()],dim=0)]
+                    logits_proto /= temp_proto
 
-        # compute key features
-        with torch.no_grad():  # no gradient to keys
-            self._momentum_update_key_encoder()  # update the key encoder
+                    proto_labels.append(labels_proto)
+                    proto_logits.append(logits_proto)
+                return logits, labels, proto_logits, proto_labels
 
-            #compute key features
-            k_outputs = self.encoder_k(feed_dict_k, rel_viewpoint)
+        elif forward_type=="view":
 
-        # compute query features
-        q_outputs = self.encoder_q(feed_dict_q)  # queries: NxC
+            # getting encoding for scene_negatives
+            with torch.no_grad():
+                self.queue_view = torch.randn(self.dim, self.view_r).cuda()
+                self.queue_view_ptr[0] = 0
 
-#         k,q = pair_embeddings(k_outputs, q_outputs, mode)
-        k,q = k_outputs, q_outputs
+                if feed_dicts_N is None or len(feed_dicts_N)<1:
+                    raise ValueError("If the mode if view forward, the scene negative dictionary must be defined properly")
 
-        k = stack_features_across_batch(k, mode)
-        q = stack_features_across_batch(q, mode)
-
-        q = nn.functional.normalize(q, dim=1)
-
-        with torch.no_grad():
-            k = nn.functional.normalize(k, dim=1)
-
-        # getting encoding for scene_negatives
-        with torch.no_grad():
-            self.queue_view_ptr[0] = 0
-            for feed_dict_ in feed_dicts_N:
-                k_n = self.encoder_k(feed_dict_)
-                # encoder output features in the list are stacked to form a tensor of features across the batch
-                k_n = stack_features_across_batch(k_n, mode)
-                # normalize feature across the batch
-                scene_negatives = nn.functional.normalize(k_n, dim=1)
-                # append negagives to queue_view
-                self._dequeue_and_enqueue_view(scene_negatives)
+                for feed_dict_ in feed_dicts_N:
+                    k_n = self.encoder_k(feed_dict_[0])
+                    # encoder output features in the list are stacked to form a tensor of features across the batch
+                    k_n = stack_features_across_batch(k_n, mode)
+                    # normalize feature across the batch
+                    scene_negatives = nn.functional.normalize(k_n, dim=1)
+                    # append negagives to queue_view
+                    self._dequeue_and_enqueue_view(scene_negatives)
 
 
-        # compute logits
-        # Einstein sum is more intuitive
-        # positive logits: Nx1
-        l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
-        # negative logits: Nxr
-        l_neg = torch.einsum('nc,ck->nk', [q, self.queue_view.clone().detach()])
+            # compute logits
+            # Einstein sum is more intuitive
+            # positive logits: Nx1
+            l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
+            # negative logits: Nxr
+            l_neg = torch.einsum('nc,ck->nk', [q, self.queue_view.clone().detach()])
 
-        # logits: Nx(1+r)
-        logits = torch.cat([l_pos, l_neg], dim=1)
+            # logits: Nx(1+r)
+            logits = torch.cat([l_pos, l_neg], dim=1)
 
-        # apply temperature
-        logits /= self.T
+            # apply temperature
+            logits /= self.T
 
-        # labels: positive key indicators
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
+            # labels: positive key indicators
+            labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
-#         # dequeue and enqueue
-#         self._dequeue_and_enqueue_view(k)
 
-        return logits, labels, None, None
+            return logits, labels, None, None
+
+        else:
+            raise ValueError("Forward type of the mode must be defined")

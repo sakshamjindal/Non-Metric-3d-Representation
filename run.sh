@@ -235,3 +235,29 @@ python train.py --batch-size 1 \
                 --mode "spatial" \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
                 --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+                
+                
+                
+                
+                
+                
+                
+-----------------------------------------------------------------------------------
+
+Fresh training after debugging
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp11 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 12 \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
