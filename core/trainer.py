@@ -304,6 +304,17 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
     tb_logger.add_scalar('View Loss', view_losses.avg, epoch)
     tb_logger.add_scalar('Train Total Loss', losses.avg, epoch)
 
+
+    tb_logger.add_histogram('relation_feature_fuse.weight', model.encoder_k.scene_graph.relation_feature_fuse.weight, epoch)
+    #tb_logger.add_histogram('relation_feature_fuse.weight grad', model.encoder_k.scene_graph.relation_feature_fuse.weight.grad, epoch)
+    tb_logger.add_histogram('relation_feature_fc weight', model.encoder_k.scene_graph.relation_feature_fc[1].weight, epoch)
+    #tb_logger.add_histogram('relation_feature_fc weigh grad', model.encoder_k.scene_graph.relation_feature_fc[1].weight.grad, epoch)
+
+    tb_logger.add_histogram('spatial_viewpoint_transformation.0.weight', model.spatial_viewpoint_transformation[0].weight, epoch)
+    tb_logger.add_histogram('spatial_viewpoint_transformation.0.weight grad', model.spatial_viewpoint_transformation[0].weight.grad, epoch)
+    tb_logger.add_histogram('spatial_viewpoint_transformation.2.weight', model.spatial_viewpoint_transformation[2].weight, epoch)
+    tb_logger.add_histogram('spatial_viewpoint_transformation.2.weight grad', model.spatial_viewpoint_transformation[2].weight.grad, epoch)
+
 #     if epoch % args.ret_freq == 0:
 #         figures = random_retrieve_topk(args, pool_e, pool_g, imgs_to_view=5)
 #         tb_logger.add_figure('Train Top10 Retrieval', figures, epoch)

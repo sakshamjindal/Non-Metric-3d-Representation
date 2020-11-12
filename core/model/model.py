@@ -147,25 +147,26 @@ class MoCo_scene_and_view(nn.Module):
             rel_viewpoint=None
 
         if is_viewpoint_eval and mode=="spatial":
-            k = self.encoder_k(feed_dict_q)
-            k = self.merge_pose_with_scene_embeddings(k,rel_viewpoint) #merge
-            for batch_ind in range(len(k)):
-                k[batch_ind][1] = self.spatial_viewpoint_transformation(k[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
-            k = stack_features_across_batch(k, mode)
-            k = nn.functional.normalize(k, dim=1)
-
+            with torch.no_grad():
+                k = self.encoder_k(feed_dict_q)
+                k = self.merge_pose_with_scene_embeddings(k,rel_viewpoint) #merge
+                for batch_ind in range(len(k)):
+                    k[batch_ind][1] = self.spatial_viewpoint_transformation(k[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
+                k = stack_features_across_batch(k, mode)
+                k = nn.functional.normalize(k, dim=1)
             return k
 
         if is_eval:
-            # the output from encoder is a list of features from the batch where each batch element (image)
-            # might contain different number of objects
-            k = self.encoder_k(feed_dict_q)
+            with torch.no_grad():
+                # the output from encoder is a list of features from the batch where each batch element (image)
+                # might contain different number of objects
+                k = self.encoder_k(feed_dict_q)
 
-            # encoder output features in the list are stacked to form a tensor of features across the batch
-            k = stack_features_across_batch(k, mode)
+                # encoder output features in the list are stacked to form a tensor of features across the batch
+                k = stack_features_across_batch(k, mode)
 
-            # normalize feature across the batch
-            k = nn.functional.normalize(k, dim=1)
+                # normalize feature across the batch
+                k = nn.functional.normalize(k, dim=1)
             return k
 
 
