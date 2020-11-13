@@ -152,7 +152,7 @@ class MoCo_scene_and_view(nn.Module):
 
         if is_viewpoint_eval and mode=="spatial":
             with torch.no_grad():
-                k = self.encoder_q(feed_dict_q)
+                k = self.encoder_k(feed_dict_q)
                 k = self.merge_pose_with_scene_embeddings(k,rel_viewpoint) #merge
                 for batch_ind in range(len(k)):
                     k[batch_ind][1] = self.spatial_viewpoint_transformation(k[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
@@ -164,7 +164,7 @@ class MoCo_scene_and_view(nn.Module):
             with torch.no_grad():
                 # the output from encoder is a list of features from the batch where each batch element (image)
                 # might contain different number of objects
-                k = self.encoder_q(feed_dict_q)
+                k = self.encoder_k(feed_dict_q)
 
                 # encoder output features in the list are stacked to form a tensor of features across the batch
                 k = stack_features_across_batch(k, mode)
@@ -198,6 +198,7 @@ class MoCo_scene_and_view(nn.Module):
         #k,q = pair_embeddings(k_outputs, q_outputs, mode)
         q = stack_features_across_batch(q, mode)
         q = nn.functional.normalize(q, dim=1)
+
 
         if forward_type=="scene":
             # compute logits
@@ -272,10 +273,10 @@ class MoCo_scene_and_view(nn.Module):
 #                 # append negagives to queue_view
 #                 self._dequeue_and_enqueue_view(scene_negatives)
 
-            self._dequeue_and_enqueue_view(k_o)
+            self._dequeue_and_enqueue_view(k_t)
 
             # positive logits: Nx1
-            l_pos = torch.einsum('nc,nc->n', [q, k_t]).unsqueeze(-1)
+            l_pos = torch.einsum('nc,nc->n', [q, k_o]).unsqueeze(-1)
             # negative logits: Nxr
             l_neg = torch.einsum('nc,ck->nk', [q, self.queue_view.clone().detach()])
             # logits: Nx(1+r)

@@ -354,4 +354,245 @@ python train.py --batch-size 1 \
                 --mode "spatial" \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
                 --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
-                --schedule 200 300 \
+                --schedule 200 300 \       
+               
+------------------------------------------------------------------------------------
+Exp 16:
+
+Nullified the negative scene embeddings. Now the Negative: untransformed spatial embeddings
+and the Postive: transformed spatial embedding
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp16 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --momentum 0.1 \
+                --scene_r 20 \
+                --view_r 6 \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+=========experiment failed>>>>>>>>>>>
+
+Still the transformation is not working 
+
+https://pasteboard.co/JzZwOea.png
+
+---------------------------------------------------------------------------------------
+
+Exp17:
+Check if experiment 15 still works
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp17 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --momentum 0.1 \
+                --scene_r 20 \
+                --view_r 12 \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 200 300
+                
+                
+https://pasteboard.co/JzZxEK8.png
+
+
+----------------------------------------------------------------------------------------------------
+
+Exp 18 : (replica of exp9). Negative scene embeddings=16
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp18 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 70 \
+                --scene_wt 0.75 \
+                --view_wt 0.25 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+
+---------------------------------------------------------------------------------------
+
+Exp 19 : Trying to replicate exp 12 and check if it works. Here I am try to check if the code reformatting from exp 12 to exp 19 still works and it is able to replicate exacts results
+
+negative embeds = 2
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp19 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 12 \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar"
+                
+                
+-------------------------------------------------------------------------------
+
+Exp 20: CHangeing exp 18 . learning rate and weights. Negative embeds =16. Solution of exp 18 is really unstable checking if it works 
+Negative Embeds : 16
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp20 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.03 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 70 \
+                --scene_wt 0.85 \
+                --view_wt 0.15 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+--------------------------------------------------------------------------------------
+
+Exp 21: Changeing the LR from exp 20 to 0.003 and see how it affects the model
+Negative Embeds : 16
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp21 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 70 \
+                --scene_wt 0.85 \
+                --view_wt 0.15 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+                
+For exp 20 and 21, the solution is really unstable. These experiments are in continuatio of exp 9 
+where there was no gradient flow in viewpoitn transformation layers
+
+---------------------------------------------------------------------------
+Exp 22:
+
+Decreasing the LR to 0.00003 from exp21 and see how it affects the model
+Negative Embeds : 16
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp22 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.00003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 70 \
+                --scene_wt 0.85 \
+                --view_wt 0.15 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+------------------------------------------------------------------------------------------------
+
+Exp 23 Only view loss experiment. Trying to judge if I can build up a scenario where I try for the viewpoint transformation
+layer purely from the view stand point
+
+Scene Embeddings = 16 + 1 (untransformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp23 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 72 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+                
+---------------------------------------------------------------------------------------------
+
+Exp 24 Only view loss experiment. Trying to judge if I can build up a scenario where I try for the viewpoint transformation
+layer purely from the view stand point
+
+Scene Embeddings =  1 (untransformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp24 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 4 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+                
+Observation
+
+
+
+---------------------------------------------------------------------------------------------------------------
+Exp 25 Only view loss experiment. Trying to judge if I can build up a scenario where I try for the viewpoint transformation
+layer purely from the view stand point
+
+Nega Scene Embeddings =  1 (transformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp25 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 4 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300

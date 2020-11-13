@@ -9,7 +9,6 @@ from PIL import Image
 import torch
 from torchvision.transforms import ToTensor, Resize
 from torch.utils.data import Dataset
-import random
 import pickle
 import core.utils_data as utils_disco
 import core.utils_vox as utils_vox
@@ -173,7 +172,6 @@ def collate_boxes(data):
     query_image = torch.stack(list(query_image))
     key_image = torch.stack(list(key_image))
     
- 
     num_boxes_q = torch.as_tensor(list(num_boxes_q))
     num_boxes_k = torch.as_tensor(list(num_boxes_k))
     
@@ -321,8 +319,10 @@ class CLEVR_train(Dataset):
 		######## Get query and key index #########################
 		
 		scene_num = idx 
-# 		query_idx, key_idx = random.sample(range(0, self.views), 2)
-		query_idx, key_idx = 0, random.sample(range(0, self.views), 1)[0]#; print(key_idx)
+		query_idx, key_idx = 0, np.random.randint(0, self.views, 1)[0]
+# 		query_idx=0
+# 		query_idx, key_idx = 0, random.sample(range(0, self.views), 1)[0]#; print(key_idx)
+# 		print(self.views, random.sample(range(0, self.views), 1), key_idx)
 		index = scene_num*self.views + query_idx
 
 		scene_path = self.all_files[scene_num]
