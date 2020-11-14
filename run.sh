@@ -596,3 +596,255 @@ python train.py --batch-size 1 \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
                 --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
                 --schedule 250 300
+                
+----------------------------------------------------------------------------------------------------------------------------
+Exp 26:
+
+Revamped the loss calculation code. No key encoder now for view loss
+removed the torch no grad and detach from the queue
+Negative Scene Embeddings =  1 (transformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp26 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 4 \
+                --hyp_N 2 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+>>>>>>>>>>>>Experiment succesful>>>>>>>>>>>>>>>>>>>
+-----------------------------------------------------------------------------------------                
+Exp 27:
+
+Revamped the loss calculation code. No key encoder now for view loss
+removed the torch no grad and detach from the queue
+Negative Scene Embeddings =  1 + 16 (transformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp27 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 72 \
+                --hyp_N 2 \
+                --K 16 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+!!!!Experiment failed : you shooud not start with that much set of negative embeddings
+
+---------------------------------------------------------------------------------------------
+Exp28
+
+
+Revamped the loss calculation code. No key encoder now for view loss
+removed the torch no grad and detach from the queue
+Negative Scene Embeddings =  1 + 4 (untransformed one)
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp28 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 24 \
+                --hyp_N 2 \
+                --K 4 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+                
+                
+A lot of False Negative are there 
+
+
+---------------------------------------------------------------------------------------------
+
+Exp29
+
+Revamped the loss calculation code. No key encoder now for view loss
+removed the torch no grad and detach from the queue
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp29 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+
+--------------------------------------------------------------------------------------------------
+
+Exp30
+
+Revamped the loss calculation code. No key encoder now for view loss
+removed the torch no grad and detach from the queue
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp30 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 250 300
+
+-------------------------------------------------------------------------------------------
+
+Exp 31
+
+Revamped the loss calculation code. No key encoder now for view loss
+removed the torch no grad and detach from the queue_view
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+Increase the learning rate to 0.03
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp31 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.03 \
+                --num-cluster 200 \
+                --scene_r 20 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --schedule 201 350
+                
+                
+>>>>>>>>>>>>>>>>>>> This LR aint working >>> CHoose 0.003
+
+-------------------------------------------------------------------------------------------
+
+Exp 32:
+
+Riding on the success of the exp 30 which was about only the view loss, now adding the scene loss also
+removed the torch no grad and detach from the queue_view
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+
+l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+self._dequeue_and_enqueue_scene(k_t.clone().detach())
+self._dequeue_and_enqueue_scene(k_o.clone().detach())
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp32 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 50 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+
+
+
+-------------------------------------------------------------------------------------------------------
+
+Exp 33:
+
+Riding on the success of the exp 30 which was about only the view loss, now adding the scene loss also
+removed the torch no grad and detach from the queue_view
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+
+Just a variation of Exp32.
+
+self._dequeue_and_enqueue_scene(k_t)
+self._dequeue_and_enqueue_scene(k_o)
+l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp33 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 50 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+
+-------------------------------------------------------------------------------------------------------------------
+
+Exp 34
+
+Riding on the success of the exp 30 which was about only the view loss, now adding the scene loss also
+removed the torch no grad and detach from the queue_view
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+
+l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+self._dequeue_and_enqueue_scene(k_t.clone().detach())
+self._dequeue_and_enqueue_scene(k_o.clone().detach())
+
+full retraining of the encoder and scene graph -- torch no grad removed
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp34 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 50 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400

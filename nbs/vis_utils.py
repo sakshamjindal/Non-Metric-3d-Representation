@@ -201,7 +201,7 @@ def draw_bounding_box(image, sub_box, obj_box):
 def plot_query_retrieval(imgs_retrieval, outFile, args):
 #     st()
     n_retrieval = len(imgs_retrieval)
-    fig = plt.figure(figsize=(20, 12))
+    fig = plt.figure(figsize=(20, 20))
     for idx in range(n_retrieval):
         for im in range(0, 12):
             img = imgs_retrieval[idx][0][im]
@@ -231,7 +231,16 @@ def random_retrieve_topk(args, pool_e=None, pool_g=None, pool_f_=None,imgs_to_vi
     knn.fit(torch.stack(pool_g.embeds).cpu())
     
     # select imgs_to_view images from pool q randomly
-    query_indices_to_use = random.sample(range(0, pool_e.num), imgs_to_view)
+#     query_indices_to_use = random.sample(range(0, pool_e.num), imgs_to_view)
+
+    query_indices_to_use=[]
+
+    while(len(query_indices_to_use)<imgs_to_view):
+        ret = np.random.randint(0,pool_e.num,1)[0]
+        if ret in query_indices_to_use or ret%4==0 or ret%4==3:
+            continue
+        else:
+            query_indices_to_use.append(ret)
     
     figures_gen = []
     print(query_indices_to_use)

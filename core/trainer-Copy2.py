@@ -241,29 +241,29 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         index = metadata["index"]
         q_idx = metadata["query_image_index"].item()
         k_idx = metadata["key_image_index"].item()
-        output_scene, target_scene, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index, forward_type="scene")
+#         output_scene, target_scene, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index, forward_type="scene")
 
-        # InfoNCE loss
-        scene_loss = criterion(output_scene, target_scene)
+#         # InfoNCE loss
+#         scene_loss = criterion(output_scene, target_scene)
 
-        # ProtoNCE loss
-        if output_proto is not None:
-            loss_proto = 0
-            for proto_out,proto_target in zip(output_proto, target_proto):
-                loss_proto += criterion(proto_out, proto_target)
-                accp = accuracy(proto_out, proto_target)[0]
-                acc_proto.update(accp[0], args.batch_size)
+#         # ProtoNCE loss
+#         if output_proto is not None:
+#             loss_proto = 0
+#             for proto_out,proto_target in zip(output_proto, target_proto):
+#                 loss_proto += criterion(proto_out, proto_target)
+#                 accp = accuracy(proto_out, proto_target)[0]
+#                 acc_proto.update(accp[0], args.batch_size)
 
-            # average loss across all sets of prototypes
-            loss_proto /= len(args.num_cluster)
-            scene_loss += loss_proto
+#             # average loss across all sets of prototypes
+#             loss_proto /= len(args.num_cluster)
+#             scene_loss += loss_proto
 
-        acc = accuracy(output_scene, target_scene)[0]
-        acc_inst_scene.update(acc[0], args.batch_size)
+#         acc = accuracy(output_scene, target_scene)[0]
+#         acc_inst_scene.update(acc[0], args.batch_size)
 
-        ''' metric_learning_view '''
-        # compute output
-        index = metadata["index"]
+#         ''' metric_learning_view '''
+#         # compute output
+#         index = metadata["index"]
         feed_dict_n_lists = sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, args.hyp_N, args.K)[0]
 
         output_view, target_view, _, _ = model(feed_dict_q, feed_dict_k, metadata, feed_dicts_N=feed_dict_n_lists, forward_type="view")
@@ -274,10 +274,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         acc = accuracy(output_view, target_view)[0]
         acc_inst_view.update(acc[0], args.batch_size)
 
-        loss = args.scene_wt*scene_loss + args.view_wt*view_loss
-#         loss = view_loss
+#         loss = args.scene_wt*scene_loss + args.view_wt*view_loss
+        loss = view_loss
 
-        scene_losses.update(scene_loss.item(), args.batch_size)
+#         scene_losses.update(scene_loss.item(), args.batch_size)
         view_losses.update(view_loss.item(), args.batch_size)
         losses.update(loss.item(), args.batch_size)
 
@@ -300,18 +300,18 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
             progress.display(i)
 
     print("Logging to TB....")
-    tb_logger.add_scalar('Train Acc Scene', acc_inst_scene.avg, epoch)
+#     tb_logger.add_scalar('Train Acc Scene', acc_inst_scene.avg, epoch)
     tb_logger.add_scalar('Train Acc View', acc_inst_view.avg, epoch)
-    tb_logger.add_scalar('Scene Loss', scene_losses.avg, epoch)
+#     tb_logger.add_scalar('Train Acc Prototype', acc_proto.avg, epoch)
+#     tb_logger.add_scalar('Scene Loss', scene_losses.avg, epoch)
     tb_logger.add_scalar('View Loss', view_losses.avg, epoch)
     tb_logger.add_scalar('Train Total Loss', losses.avg, epoch)
-#     tb_logger.add_scalar('Train Acc Prototype', acc_proto.avg, epoch)
 
 
-    tb_logger.add_histogram('relation_feature_fuse.weight', model.encoder_q.scene_graph.relation_feature_fuse.weight, epoch)
-    tb_logger.add_histogram('relation_feature_fuse.weight grad', model.encoder_q.scene_graph.relation_feature_fuse.weight.grad, epoch)
-    tb_logger.add_histogram('relation_feature_fc weight', model.encoder_q.scene_graph.relation_feature_fc[1].weight, epoch)
-    tb_logger.add_histogram('relation_feature_fc weigh grad', model.encoder_q.scene_graph.relation_feature_fc[1].weight.grad, epoch)
+    tb_logger.add_histogram('relation_feature_fuse.weight', model.encoder_k.scene_graph.relation_feature_fuse.weight, epoch)
+    #tb_logger.add_histogram('relation_feature_fuse.weight grad', model.encoder_k.scene_graph.relation_feature_fuse.weight.grad, epoch)
+    tb_logger.add_histogram('relation_feature_fc weight', model.encoder_k.scene_graph.relation_feature_fc[1].weight, epoch)
+    #tb_logger.add_histogram('relation_feature_fc weigh grad', model.encoder_k.scene_graph.relation_feature_fc[1].weight.grad, epoch)
 
     tb_logger.add_histogram('spatial_viewpoint_transformation.0.weight', model.spatial_viewpoint_transformation[0].weight, epoch)
     tb_logger.add_histogram('spatial_viewpoint_transformation.0.weight grad', model.spatial_viewpoint_transformation[0].weight.grad, epoch)

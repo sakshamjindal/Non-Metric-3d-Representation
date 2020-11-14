@@ -46,6 +46,7 @@ parser.add_argument('--temperature', default=0.2, type=float,help='softmax tempe
 parser.add_argument('--ret_freq', default=5, type=int,metavar='N', help='visualize epoch frequency (default: 5)')
 parser.add_argument('-r', '--moco_r', default=35, type=int, help='size of queue (make sure that it is multiple of batch size)')
 parser.add_argument('--hyp_N', default=1, type=int, help='maximum number of objects in per scene')
+parser.add_argument('--K', default=0, type=int, help='number of negative scene embeddings from other views')
 parser.add_argument('--mode', default=None, type=str,help='node or spatial')
 parser.add_argument('--scene_wt', default=1e-3, type=float, help='importance for view_loss (default: 1e-3)')
 parser.add_argument('--view_wt', default=1e-7, type=float, help='importance for scene_loss (default: 1e-7)')

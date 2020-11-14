@@ -204,7 +204,7 @@ def collate_boxes(data):
 
 
 class CLEVR_train(Dataset):
-	def __init__(self, root_dir, hyp_N=1, transform=None, target_transform=None, few_shot=False):
+	def __init__(self, root_dir, hyp_N=1, q_IDX=None, transform=None, target_transform=None, few_shot=False):
 		self.root_dir = root_dir
 		self.transform = transform
 		self.target_transform = target_transform
@@ -212,6 +212,7 @@ class CLEVR_train(Dataset):
 		self.N = hyp_N
 		self.few_shot = few_shot
 		self.views = 18
+		self.q_IDX=q_IDX  
 
 
 		if root_dir.endswith("txt"):
@@ -318,8 +319,12 @@ class CLEVR_train(Dataset):
 		
 		######## Get query and key index #########################
 		
-		scene_num = idx 
-		query_idx, key_idx = 0, np.random.randint(0, self.views, 1)[0]
+		scene_num = idx
+
+		if self.q_IDX is not None:
+			query_idx, key_idx = self.q_IDX, np.random.randint(0, self.views, 1)[0]
+		else:
+ 			query_idx, key_idx = np.random.randint(0, self.views, 2)           
 # 		query_idx=0
 # 		query_idx, key_idx = 0, random.sample(range(0, self.views), 1)[0]#; print(key_idx)
 # 		print(self.views, random.sample(range(0, self.views), 1), key_idx)
@@ -901,7 +906,3 @@ def sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, hyp_N, views_to_s
         
         full_list.append(feed_dict_n_list)
     return full_list 
-        
-    
-    
-
