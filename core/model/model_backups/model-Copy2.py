@@ -173,7 +173,6 @@ class MoCo_scene_and_view(nn.Module):
                 k = nn.functional.normalize(k, dim=1)
             return k
 
-
         # k_o : spatial embeddings before viewpoint transformation
         # k_t : spatial embeds after viewpoint transformation
 
@@ -211,8 +210,8 @@ class MoCo_scene_and_view(nn.Module):
             labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
             # dequeue and enqueue
-            self._dequeue_and_enqueue_scene(k_t.clone().detach())
-            self._dequeue_and_enqueue_scene(k_o.clone().detach())
+            self._dequeue_and_enqueue_scene(k_t)
+            self._dequeue_and_enqueue_scene(k_o)
 
             return logits, labels, None, None
 

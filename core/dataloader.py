@@ -9,7 +9,6 @@ from PIL import Image
 import torch
 from torchvision.transforms import ToTensor, Resize
 from torch.utils.data import Dataset
-import random
 import pickle
 import core.utils_data as utils_disco
 import core.utils_vox as utils_vox
@@ -173,7 +172,6 @@ def collate_boxes(data):
     query_image = torch.stack(list(query_image))
     key_image = torch.stack(list(key_image))
     
- 
     num_boxes_q = torch.as_tensor(list(num_boxes_q))
     num_boxes_k = torch.as_tensor(list(num_boxes_k))
     
@@ -206,7 +204,7 @@ def collate_boxes(data):
 
 
 class CLEVR_train(Dataset):
-	def __init__(self, root_dir, hyp_N=1, transform=None, target_transform=None, few_shot=False):
+	def __init__(self, root_dir, hyp_N=1, q_IDX=None, transform=None, target_transform=None, few_shot=False):
 		self.root_dir = root_dir
 		self.transform = transform
 		self.target_transform = target_transform
@@ -214,6 +212,7 @@ class CLEVR_train(Dataset):
 		self.N = hyp_N
 		self.few_shot = few_shot
 		self.views = 18
+		self.q_IDX=q_IDX  
 
 
 		if root_dir.endswith("txt"):
@@ -320,10 +319,16 @@ class CLEVR_train(Dataset):
 		
 		######## Get query and key index #########################
 		
-		scene_num = idx 
-		query_idx, key_idx = random.sample(range(0, self.views), 2)
+		scene_num = idx
+
+		if self.q_IDX is not None:
+			query_idx, key_idx = self.q_IDX, np.random.randint(0, self.views, 1)[0]
+		else:
+ 			query_idx, key_idx = np.random.randint(0, self.views, 2)           
+# 		query_idx=0
+# 		query_idx, key_idx = 0, random.sample(range(0, self.views), 1)[0]#; print(key_idx)
+# 		print(self.views, random.sample(range(0, self.views), 1), key_idx)
 		index = scene_num*self.views + query_idx
-		
 
 		scene_path = self.all_files[scene_num]
 		data = pickle.load(open(scene_path, "rb"))
@@ -605,7 +610,7 @@ class CLEVR_train_onlyquery(Dataset):
 		origin_T_camXs = torch.from_numpy(data['origin_T_camXs_raw'][query_idx]).reshape(hyp_B, hyp_S, 4, 4).cuda()
 		camX0_T_camXs = utils_disco.get_camM_T_camXs(origin_T_camXs, ind=0)
 		camRs_T_camXs = __u(torch.matmul(utils_disco.safe_inverse(__p(origin_T_camRs)), __p(origin_T_camXs))) 
-
+		print(origin_T_camXs)
 
 		camXs_T_camRs = __u(utils_disco.safe_inverse(__p(camRs_T_camXs)))
 		camX0_T_camRs = camXs_T_camRs[:,0]
@@ -896,11 +901,8 @@ def sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, hyp_N, views_to_s
             feed_dict_n, m = i
             if (m['index'] == q_idx) or (m['index'] == k_idx):
                 continue
-            feed_dict_n_list.append(feed_dict_n)
-            
+#             feed_dict_n_list.append(feed_dict_n)
+            feed_dict_n_list.append([feed_dict_n, m["index"]])
+        
         full_list.append(feed_dict_n_list)
     return full_list 
-        
-    
-    
-

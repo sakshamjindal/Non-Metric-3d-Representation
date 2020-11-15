@@ -61,29 +61,29 @@ class MoCo_scene_and_view(nn.Module):
         self.queue_view = nn.functional.normalize(self.queue_view, dim=0)
         self.register_buffer("queue_view_ptr", torch.zeros(1, dtype=torch.long))
 
-#     @torch.no_grad()
-#     def _momentum_update_key_encoder(self):
-#         """
-#         Momentum update of the key encoder
-#         """
-#         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
-#             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
+    @torch.no_grad()
+    def _momentum_update_key_encoder(self):
+        """
+        Momentum update of the key encoder
+        """
+        for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
+            param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
 
     @torch.no_grad()
     def _dequeue_and_enqueue_scene(self, keys):
 
         batch_size = keys.shape[0]
+
         ptr = int(self.queue_scene_ptr)
-
-        if ptr+batch_size>self.scene_r:
-            self.queue_scene_ptr[0] = 0
-            ptr = int(self.queue_scene_ptr)
-
         self.queue_scene[:, ptr:ptr + batch_size] = keys.T
         ptr = (ptr + batch_size) % self.scene_r  # move pointer
 
+        if self.scene_r % batch_size != 0:
+            ptr=0
+
         self.queue_scene_ptr[0] = ptr
 
+    @torch.no_grad()
     def _dequeue_and_enqueue_view(self, keys):
 
         batch_size = keys.shape[0]
@@ -152,7 +152,7 @@ class MoCo_scene_and_view(nn.Module):
 
         if is_viewpoint_eval and mode=="spatial":
             with torch.no_grad():
-                k = self.encoder_q(feed_dict_q)
+                k = self.encoder_k(feed_dict_q)
                 k = self.merge_pose_with_scene_embeddings(k,rel_viewpoint) #merge
                 for batch_ind in range(len(k)):
                     k[batch_ind][1] = self.spatial_viewpoint_transformation(k[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
@@ -164,7 +164,7 @@ class MoCo_scene_and_view(nn.Module):
             with torch.no_grad():
                 # the output from encoder is a list of features from the batch where each batch element (image)
                 # might contain different number of objects
-                k = self.encoder_q(feed_dict_q)
+                k = self.encoder_k(feed_dict_q)
 
                 # encoder output features in the list are stacked to form a tensor of features across the batch
                 k = stack_features_across_batch(k, mode)
@@ -177,8 +177,9 @@ class MoCo_scene_and_view(nn.Module):
         # k_o : spatial embeddings before viewpoint transformation
         # k_t : spatial embeds after viewpoint transformation
 
-        # update the key encoder
-        k_o = self.encoder_q(feed_dict_k) # callculate the embeddings
+        with torch.no_grad():  # no gradient to keys
+            self._momentum_update_key_encoder()  # update the key encoder
+            k_o = self.encoder_k(feed_dict_k) # callculate the embeddings
 
         # Do viewpoint transformation on embeddings if the pose is fed as input
         if mode=="spatial" and rel_viewpoint is not None:
@@ -186,15 +187,18 @@ class MoCo_scene_and_view(nn.Module):
             for batch_ind in range(len(k_t)):
                 k_t[batch_ind][1] = self.spatial_viewpoint_transformation(k_t[batch_ind][1]) # Do viewpoint transformation on spatial embeddings
 
-        k_o = stack_features_across_batch(k_o, mode)
-        k_o = nn.functional.normalize(k_o, dim=1)
+        with torch.no_grad():
+            k_o = stack_features_across_batch(k_o, mode)
+            k_o = nn.functional.normalize(k_o, dim=1)
 
         k_t = stack_features_across_batch(k_t, mode)
         k_t = nn.functional.normalize(k_t, dim=1)
 
         q = self.encoder_q(feed_dict_q)  # queries: NxC
+        #k,q = pair_embeddings(k_outputs, q_outputs, mode)
         q = stack_features_across_batch(q, mode)
         q = nn.functional.normalize(q, dim=1)
+
 
         if forward_type=="scene":
             # compute logits
@@ -211,8 +215,7 @@ class MoCo_scene_and_view(nn.Module):
             labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
             # dequeue and enqueue
-            self._dequeue_and_enqueue_scene(k_t.clone().detach())
-            self._dequeue_and_enqueue_scene(k_o.clone().detach())
+            self._dequeue_and_enqueue_scene(k_t)
 
             return logits, labels, None, None
 
@@ -256,26 +259,26 @@ class MoCo_scene_and_view(nn.Module):
             self.queue_view = torch.randn(self.dim, self.view_r).cuda()
             self.queue_view_ptr[0] = 0
 
-            self._dequeue_and_enqueue_view(k_o)
+#             if feed_dicts_N is None or len(feed_dicts_N)<1:
+#                 raise ValueError("If the mode is view forward, the scene negative dictionary must be defined properly")
 
-            negative_view_index = [feed_n[1] for feed_n in feed_dicts_N]
-
-            # getting encoding for scene_negatives
-            for feed_dict_ in feed_dicts_N:
+#             # getting encoding for scene_negatives
+#             for feed_dict_ in feed_dicts_N:
 #                 with torch.no_grad():
-                k_n = self.encoder_q(feed_dict_[0])
-                # encoder output features in the list are stacked to form a tensor of features across the batch
-                k_n = stack_features_across_batch(k_n, mode)
-                # normalize feature across the batch
-                scene_negatives = nn.functional.normalize(k_n, dim=1)
-                # append negagives to queue_view
-                self._dequeue_and_enqueue_view(scene_negatives)
+#                     k_n = self.encoder_k(feed_dict_[0])
+#                     # encoder output features in the list are stacked to form a tensor of features across the batch
+#                     k_n = stack_features_across_batch(k_n, mode)
+#                     # normalize feature across the batch
+#                     scene_negatives = nn.functional.normalize(k_n, dim=1)
+#                 # append negagives to queue_view
+#                 self._dequeue_and_enqueue_view(scene_negatives)
 
+            self._dequeue_and_enqueue_view(k_t)
 
             # positive logits: Nx1
-            l_pos = torch.einsum('nc,nc->n', [q, k_t]).unsqueeze(-1)
+            l_pos = torch.einsum('nc,nc->n', [q, k_o]).unsqueeze(-1)
             # negative logits: Nxr
-            l_neg = torch.einsum('nc,ck->nk', [q, self.queue_view])
+            l_neg = torch.einsum('nc,ck->nk', [q, self.queue_view.clone().detach()])
             # logits: Nx(1+r)
             logits = torch.cat([l_pos, l_neg], dim=1)
             # apply temperature

@@ -61,26 +61,25 @@ class MoCo_scene_and_view(nn.Module):
         self.queue_view = nn.functional.normalize(self.queue_view, dim=0)
         self.register_buffer("queue_view_ptr", torch.zeros(1, dtype=torch.long))
 
-#     @torch.no_grad()
-#     def _momentum_update_key_encoder(self):
-#         """
-#         Momentum update of the key encoder
-#         """
-#         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
-#             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
+    @torch.no_grad()
+    def _momentum_update_key_encoder(self):
+        """
+        Momentum update of the key encoder
+        """
+        for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
+            param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
 
     @torch.no_grad()
     def _dequeue_and_enqueue_scene(self, keys):
 
         batch_size = keys.shape[0]
+
         ptr = int(self.queue_scene_ptr)
-
-        if ptr+batch_size>self.scene_r:
-            self.queue_scene_ptr[0] = 0
-            ptr = int(self.queue_scene_ptr)
-
         self.queue_scene[:, ptr:ptr + batch_size] = keys.T
         ptr = (ptr + batch_size) % self.scene_r  # move pointer
+
+        if self.scene_r % batch_size != 0:
+            ptr=0
 
         self.queue_scene_ptr[0] = ptr
 
@@ -177,6 +176,7 @@ class MoCo_scene_and_view(nn.Module):
         # k_o : spatial embeddings before viewpoint transformation
         # k_t : spatial embeds after viewpoint transformation
 
+
         # update the key encoder
         k_o = self.encoder_q(feed_dict_k) # callculate the embeddings
 
@@ -211,8 +211,7 @@ class MoCo_scene_and_view(nn.Module):
             labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
             # dequeue and enqueue
-            self._dequeue_and_enqueue_scene(k_t.clone().detach())
-            self._dequeue_and_enqueue_scene(k_o.clone().detach())
+            self._dequeue_and_enqueue_scene(k_t)
 
             return logits, labels, None, None
 
