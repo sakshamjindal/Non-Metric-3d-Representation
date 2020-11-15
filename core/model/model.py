@@ -211,7 +211,7 @@ class MoCo_scene_and_view(nn.Module):
             labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
             # dequeue and enqueue
-            self._dequeue_and_enqueue_scene(k_t.clone().detach())
+#             self._dequeue_and_enqueue_scene(k_t.clone().detach())
             self._dequeue_and_enqueue_scene(k_o.clone().detach())
 
             return logits, labels, None, None

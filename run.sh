@@ -797,6 +797,8 @@ Just a variation of Exp32.
 self._dequeue_and_enqueue_scene(k_t)
 self._dequeue_and_enqueue_scene(k_o)
 l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+@torch.no_grad to queue_view
+
 
 python train.py --batch-size 1 \
                 --seed 0 \
@@ -839,6 +841,43 @@ python train.py --batch-size 1 \
                 --lr 0.003 \
                 --num-cluster 200 \
                 --scene_r 50 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+                
+
+-------------------------------------------------------------------------------------------------------------------
+
+Exp 35
+
+Riding on the success of the exp 30 which was about only the view loss, now adding the scene loss also
+removed the torch no grad and detach from the queue_view
+Negative Scene Embeddings =  1 + 8 (untransformed one)
+
+l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+self._dequeue_and_enqueue_scene(k_t.clone().detach())
+self._dequeue_and_enqueue_scene(k_o.clone().detach())
+
+full retraining of the encoder and scene graph -- torch no grad removed
+
+self._dequeue_and_enqueue_scene(k_t.clone().detach()) ---removed
+
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp35 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 26 \
                 --view_r 40 \
                 --hyp_N 2 \
                 --K 8 \
