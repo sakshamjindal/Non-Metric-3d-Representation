@@ -212,7 +212,7 @@ class MoCo_scene_and_view(nn.Module):
             labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda()
 
             # dequeue and enqueue
-            self._dequeue_and_enqueue_scene(k_t.clone().detach())
+#             self._dequeue_and_enqueue_scene(k_t.clone().detach())
             self._dequeue_and_enqueue_scene(k_o.clone().detach())
 
             return logits, labels, None, None
@@ -257,6 +257,8 @@ class MoCo_scene_and_view(nn.Module):
             self.queue_view = torch.randn(self.dim, self.view_r).cuda()
             self.queue_view_ptr[0] = 0
 
+            self._dequeue_and_enqueue_view(k_o)
+
             negative_view_index = [feed_n[1] for feed_n in feed_dicts_N]
 
             # getting encoding for scene_negatives
@@ -269,8 +271,7 @@ class MoCo_scene_and_view(nn.Module):
                 scene_negatives = nn.functional.normalize(k_n, dim=1)
                 # append negagives to queue_view
                 self._dequeue_and_enqueue_view(scene_negatives)
-                
-            self._dequeue_and_enqueue_view(k_o)
+
 
             # positive logits: Nx1
             l_pos = torch.einsum('nc,nc->n', [q, k_t]).unsqueeze(-1)

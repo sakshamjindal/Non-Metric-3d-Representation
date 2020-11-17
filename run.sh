@@ -797,7 +797,7 @@ Just a variation of Exp32.
 self._dequeue_and_enqueue_scene(k_t)
 self._dequeue_and_enqueue_scene(k_o)
 l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
-@torch.no_grad to queue_view
+@torch.no_grad to queue_scene
 
 
 python train.py --batch-size 1 \
@@ -888,6 +888,42 @@ python train.py --batch-size 1 \
                 --view_wt 0.5 \
                 --schedule 250 400
                 
+-------------------------------------------------------------------------------------------
+
+Exp 35-2: Training on 10 scenes
+
+Riding on the success of the exp 30 which was about only the view loss, now adding the scene loss also
+removed the torch no grad and detach from the queue_view
+Negative Scene Embeddings =  1 + 16 (untransformed one)
+
+Just a variation of Exp33.
+
+removed ----> self._dequeue_and_enqueue_scene(k_t)
+configure ---->
+self._dequeue_and_enqueue_scene(k_o)
+l_neg = torch.einsum('nc,ck->nk', [q, self.queue_scene.clone().detach()])
+@torch.no_grad to queue_scene
+
+
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp35_2 \
+                --epochs 350 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 26 \
+                --view_r 40 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+                
 -------------------------------------------------------------------------------------------------------------------
 
 Exp 36 - Full dataset training 
@@ -906,6 +942,7 @@ self._dequeue_and_enqueue_scene(k_t.clone().detach()) ---removed
 
 Full dataset training with scene_r = 60 (15)
 
+--> screen 3
 
 python train.py --batch-size 1 \
                 --seed 0 \
@@ -924,3 +961,224 @@ python train.py --batch-size 1 \
                 --scene_wt 0.5 \
                 --view_wt 0.5 \
                 --schedule 300 450
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------
+Bug spotted .. experiment 35, 35_2 and 36 needs to be repeated now
+----------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Exp 37
+
+--> extension of exp 34 with more views_r and checking if training stablizes
+
+--> model file of exp34
+
+--> screen 4
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp37 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 50 \
+                --view_r 72 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Exp 38
+
+Negative Scene Embeddings =  1 + 16 (untransformed one)
+
+Just a variation of Exp35
+
+
+
+-->full retraining of the encoder and scene graph -- torch no grad removed
+
+---> model file of exp35
+
+---> screen 2
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp38 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 26 \
+                --view_r 72 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+                
+--------------------------------------------------------------------------------------------------------------------------------------------------
+Exp 37 and 38 arefailure, the scene loss curves do not converge. Training does not stabilise. Adding all the views as negatives destablises the training 
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+Exp 39 and exp 40
+
+--> extension of exp 34 with more views_r and checking if training stablizes
+
+--> model file of exp34
+
+--> screen 2
+
+--> negatives = 7x2
+
+--> balance out scn
+
+---> in exp 34 view_r is 40 and scene_r is 50, now balancing out them --> 
+
+----> we have both the k_t and k_o in negatives
+
+----> in view forward, k_o is enqued towards the end 
+
+Extenstion of exp 34-->
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp39 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 56 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+
+
+Extension of exp 35-->
+
+---> negatives = 7
+
+---> in exp 35 view_r is 40 and scene_r is 50, 
+
+----> we have  only k_o in scene negatives
+
+----> in view forward, k_o is enqued towards the end
+
+--> screen 4
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp40 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 28 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+                
+--------------------------------------------------------------------------------------------------------------------------------------------
+
+xxxxxxxxxxxx---- failed experiment -------------------xxxxxxxxxxxxxx
+
+Exp 41 -- taking model and experiment configs from exp34 and exp 39
+
+screen 5
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp41 \
+                --epochs 500 \
+                --warmup-epoch 350 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 56 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 8 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 250 400
+     
+xxxxxxxxxxxx---- failed experiment -------------------xxxxxxxxxxxxxx
+
+-------------------------------------------------------------------------------------------------------
+Exp 42 - model from exp39
+
+Extension of experiment 39,decreasing scene_r -- a feasible value looks to be 40% of the dataset.. also this training needs to run a lot longer
+
+screen 1
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp42 \
+                --epochs 600 \
+                --warmup-epoch 601 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 32 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 450
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+Exp 43 -- model from exp39 full training of the dataset with scenes negatives as 30% of the dataset (230*0.3*8)
+
+Extension of experiment 36 with model configs from exp 42 and 39
+
+python train.py --batch-size 1 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp43 \
+                --epochs 600 \
+                --warmup-epoch 601 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 552 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 450
+
+

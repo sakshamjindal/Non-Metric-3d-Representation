@@ -204,7 +204,7 @@ def collate_boxes(data):
 
 
 class CLEVR_train(Dataset):
-	def __init__(self, root_dir, hyp_N=1, q_IDX=None, transform=None, target_transform=None, few_shot=False):
+	def __init__(self, root_dir, hyp_N=1, q_IDX=None, scenes = None, transform=None, target_transform=None, few_shot=False):
 		self.root_dir = root_dir
 		self.transform = transform
 		self.target_transform = target_transform
@@ -212,8 +212,8 @@ class CLEVR_train(Dataset):
 		self.N = hyp_N
 		self.few_shot = few_shot
 		self.views = 18
-		self.q_IDX=q_IDX  
-
+		self.q_IDX=q_IDX   
+		self.scenes=scenes
 
 		if root_dir.endswith("txt"):
 			data  = []
@@ -228,11 +228,11 @@ class CLEVR_train(Dataset):
 		else:
 			self.all_files = [os.path.join(root_dir,f) for f in os.listdir(root_dir) if f.endswith('.p')]
 			
-		self.all_files.sort()#; self.all_files = self.all_files[:10]
-			
+		self.all_files.sort()#; 
+		if self.scenes is not None:
+			self.all_files = self.all_files[:self.scenes]
 		print('Initialised.....',len(self.all_files),' files...')
-			
- 
+
 		self.do_shape = True
 		self.do_color = False
 		self.do_material = False
