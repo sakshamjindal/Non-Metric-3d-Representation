@@ -35,7 +35,7 @@ from torch.utils.data import DataLoader
 # Cell
 
 from .model.model import MoCo_scene_and_view as MoCo
-from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery, sample_same_scene_negs
+from .dataloader import CLEVR_train, collate_boxes, CLEVR_train_onlyquery, collate_boxes_onlyquery, sample_same_scene_negs_
 from .utils import compute_features, run_kmeans, AverageMeter, ProgressMeter, adjust_learning_rate, accuracy, save_checkpoint, DoublePool_O, store_to_pool, random_retrieve_topk, plot_query_retrieval
 
 # Cell
@@ -89,11 +89,14 @@ def run_training(args):
 
     traindir = os.path.join(args.data)
     valdir = os.path.join(args.data[:-5] + 'v.txt')
+
+#     torch.multiprocessing.set_start_method('spawn', force=True)
+
     moco_train_dataset = CLEVR_train(root_dir=traindir, hyp_N=args.hyp_N)
     moco_train_loader = DataLoader(moco_train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_boxes)
 
-    kmeans_train_dataset = CLEVR_train_onlyquery(root_dir=traindir, hyp_N=args.hyp_N)
-    kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
+#     kmeans_train_dataset = CLEVR_train_onlyquery(root_dir=traindir, hyp_N=args.hyp_N)
+#     kmeans_train_loader = DataLoader(kmeans_train_dataset, batch_size=5*args.batch_size, shuffle=False, collate_fn=collate_boxes_onlyquery)
 
     pool_size = len(moco_train_dataset)
 
@@ -113,7 +116,7 @@ def run_training(args):
 
     print('==> Making model..')
 
-    model = MoCo(mode=args.mode, scene_r=args.scene_r, view_r=args.view_r)
+    model = MoCo(mode=args.mode, scene_r=args.scene_r, view_r=args.view_r, batch_size=args.batch_size)
     #model = nn.DataParallel(model)
     model = model.to(device)
     num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -239,8 +242,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         ''' metric_learning_scene '''
         # compute output
         index = metadata["index"]
-        q_idx = metadata["query_image_index"].item()
-        k_idx = metadata["key_image_index"].item()
         output_scene, target_scene, output_proto, target_proto = model(feed_dict_q, feed_dict_k, metadata, cluster_result=cluster_result, index=index, forward_type="scene")
 
         # InfoNCE loss
@@ -264,7 +265,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, cluster_result
         ''' metric_learning_view '''
         # compute output
         index = metadata["index"]
-        feed_dict_n_lists = sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, args.hyp_N, args.K)[0]
+        feed_dict_n_lists, negative_indexes = sample_same_scene_negs_(feed_dict_q, feed_dict_k, metadata, args.hyp_N, args.K)
 
         output_view, target_view, _, _ = model(feed_dict_q, feed_dict_k, metadata, feed_dicts_N=feed_dict_n_lists, forward_type="view")
 

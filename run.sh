@@ -1180,5 +1180,77 @@ python train.py --batch-size 1 \
                 --scene_wt 0.5 \
                 --view_wt 0.5 \
                 --schedule 450
+---------------------------------------------------------------------------
+Exp 44
 
+batched_training_test for first 20 scenes. Extension of exp42 (and exp 39)
+
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp44 \
+                --epochs 600 \
+                --warmup-epoch 601 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 32 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 450
+                
+------------------------------------------------------------------------------
+Exp 45
+
+Batched training of the full dataset. Extension of exp 39, 42 and 43 with reduced scene_r at 20% of the dataset
+
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp45 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.003 \
+                --num-cluster 200 \
+                --scene_r 368 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 600
+                
+>>>> Even though the loss curve are comparable to the training routines with batch_size, it was not able to attain the same levels of accuracy
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+Exp 46:
+
+Batched training with bs=4 of full dataset. Learning rate is increased by factor of 4.
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp46 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 368 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 600
 
