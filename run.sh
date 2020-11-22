@@ -1253,4 +1253,57 @@ python train.py --batch_size 4 \
                 --scene_wt 0.5 \
                 --view_wt 0.5 \
                 --schedule 600
+                
+-------------------------------------------------------------------------------------------------------------------------------------                
+Exp 47:
 
+Continuation of exp 46, lr=0.012. Scene_r decreased to 120 (6% of the dataset)
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp47 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 120 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 600
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+
+Exp 48 (exp similar to exp 35 and 36 (good results))
+
+Continuation of exp 47, lr=0.012. Scene_r decreased to 60 (6% of the dataset)
+self._dequeue_and_enqueue_scene(k_t.clone().detach()) --removed
+
+Verifying the fact that having batched training has same almost similar effects with single batch. (Exp similar to ). If it does not, I think having batched training I will remove
+
+
+---- training running on screen 1
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp48 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 60 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/single_obj_exp1/checkpoint.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 800
