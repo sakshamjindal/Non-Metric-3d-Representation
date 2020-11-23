@@ -906,3 +906,75 @@ def sample_same_scene_negs(feed_dict_q, feed_dict_k, metadata, hyp_N, views_to_s
         
         full_list.append(feed_dict_n_list)
     return full_list 
+
+
+def sample_same_scene_negs_(feed_dict_q, feed_dict_k, metadata, hyp_N, views_to_sample = 16):
+    assert views_to_sample <= 16
+    
+    B = feed_dict_q['images'].shape[0]
+
+    for b in range(B):
+        scene_path = metadata['scene_path'][b]
+        q_idx = metadata["query_image_index"][b]
+        k_idx = metadata["key_image_index"][b]
+        scene_num = metadata["scene_number"][b]
+
+        neg_dataset = CLEVR_train_sampleallnegs(scene_path, hyp_N=hyp_N, scene_num=scene_num, query_num=q_idx, key_num=k_idx)
+        neg_loader = DataLoader(neg_dataset, batch_size=1, shuffle=True, collate_fn=collate_boxes_onlyquery)
+
+        if b==0:
+            views_fetched = 0
+            feed_dict_n_list = []
+            
+            neg_indexes = []
+            for i in neg_loader:
+                feed_dict_n, m = i
+
+                if (m['index'] == q_idx) or (m['index'] == k_idx):
+                    continue
+                feed_dict_n_list.append(feed_dict_n)
+                neg_indexes.append(m["index"])
+                #feed_dict_n_list.append([feed_dict_n, m["index"]])
+                views_fetched += 1
+
+                if views_fetched>=views_to_sample:
+                    break
+            
+            negative_views = torch.as_tensor(neg_indexes).reshape(1,-1)
+
+        else:
+            views_fetched = 0
+            neg_indexes = []
+            for i in neg_loader:
+                feed_dict_n, m = i
+                
+                if (m['index'] == q_idx) or (m['index'] == k_idx):
+                    continue
+                    
+                neg_indexes.append(m["index"])    
+                
+                try:
+                    feed_dict_n_list[views_fetched]["images"] = torch.cat((feed_dict_n_list[views_fetched]["images"],feed_dict_n["images"]))
+                except:
+                    print(feed_dict_n_list[views_fetched]["images"].shape)
+                    print(feed_dict_n["images"].shape)
+                try:
+                    feed_dict_n_list[views_fetched]["objects"] = torch.cat((feed_dict_n_list[views_fetched]["objects"],feed_dict_n["objects"]))
+                except:
+                    print(feed_dict_n_list[views_fetched]["objects"])
+                    print(feed_dict_n["objects"])
+                feed_dict_n_list[views_fetched]["objects_boxes"] = torch.cat((feed_dict_n_list[views_fetched]["objects_boxes"],feed_dict_n["objects_boxes"]))
+                
+                views_fetched += 1
+                
+                if views_fetched>=views_to_sample:
+                    break
+
+            neg_indexes = torch.as_tensor(neg_indexes)
+            
+            try:
+                negative_views = torch.cat((negative_views,neg_indexes.reshape(1,-1)))
+            except:
+                print(b,negative_views, neg_indexes)       
+            
+    return feed_dict_n_list, negative_views

@@ -532,7 +532,7 @@ def get_alignedboxes2thetaformat(aligned_boxes):
     B,N,_,_ = list(aligned_boxes.shape)
     aligned_boxes = torch.reshape(aligned_boxes,[B,N,6])
     B,N,_ = list(aligned_boxes.shape)
-    xmin,ymin,zmin,xmax,ymax,zmax = torch.unbind(torch.tensor(aligned_boxes), dim=-1)
+    xmin,ymin,zmin,xmax,ymax,zmax = torch.unbind(torch.as_tensor(aligned_boxes), dim=-1)
     xc = (xmin+xmax)/2.0
     yc = (ymin+ymax)/2.0
     zc = (zmin+zmax)/2.0

@@ -20,19 +20,19 @@ class SceneGraph(nn.Module):
         self.downsample_rate = downsample_rate
         self.mode = mode
 
+
         self.object_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
-#         self.context_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
-        self.relation_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
-
-#         self.context_feature_extract = nn.Conv2d(feature_dim, feature_dim, 1)
-        self.relation_feature_extract = nn.Conv2d(feature_dim, feature_dim // 2 * 3, 1)
-
-#         self.object_feature_fuse = nn.Conv2d(feature_dim * 2, output_dims[0], 1)
-        self.relation_feature_fuse = nn.Conv2d(feature_dim // 2 * 3 + output_dims[0] * 2, output_dims[1], 1)
-#         self.relation_feature_fuse = nn.Conv2d(feature_dim // 2 * 3, output_dims[1], 1)
-
         self.object_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[0] * self.pool_size ** 2, output_dims[0]))
-        self.relation_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[1] * self.pool_size ** 2, output_dims[1]))
+
+#         self.context_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
+#         self.context_feature_extract = nn.Conv2d(feature_dim, feature_dim, 1)
+#         self.object_feature_fuse = nn.Conv2d(feature_dim * 2, output_dims[0], 1)
+
+        if mode=="spatial":
+            self.relation_roi_pool = RoIAlign(self.pool_size, 1.0 / self.downsample_rate, -1)
+            self.relation_feature_extract = nn.Conv2d(feature_dim, feature_dim // 2 * 3, 1)
+            self.relation_feature_fuse = nn.Conv2d(feature_dim // 2 * 3 + output_dims[0] * 2, output_dims[1], 1)
+            self.relation_feature_fc = nn.Sequential(nn.ReLU(True), nn.Linear(output_dims[1] * self.pool_size ** 2, output_dims[1]))
 
         # this will change for models with multiple objects in future
         # in that case, it will pick up the pretrained weights
