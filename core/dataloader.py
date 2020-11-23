@@ -228,7 +228,7 @@ class CLEVR_train(Dataset):
 		else:
 			self.all_files = [os.path.join(root_dir,f) for f in os.listdir(root_dir) if f.endswith('.p')]
 			
-		self.all_files.sort()#; 
+		self.all_files.sort();self.all_files=self.all_files[:228]
 		if self.scenes is not None:
 			self.all_files = self.all_files[:self.scenes]
 		print('Initialised.....',len(self.all_files),' files...')
@@ -498,7 +498,7 @@ class CLEVR_train_onlyquery(Dataset):
 		else:
 			self.all_files = [os.path.join(root_dir,f) for f in os.listdir(root_dir) if f.endswith('.p')]
 			
-		self.all_files.sort(); self.all_files = self.all_files[:10]
+		self.all_files.sort(); self.all_files = self.all_files[:228]
 			
 		print('Initialised.....',len(self.all_files)*self.views,' files...')
 			

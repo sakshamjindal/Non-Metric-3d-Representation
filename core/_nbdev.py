@@ -3,15 +3,18 @@
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
 index = {"Encoder": "Encoder.ipynb",
+         "MoCo_node": "MoCo-node_training.ipynb",
          "MoCo_scene_and_view": "MoCo-scene_and_view.ipynb",
          "SceneGraph": "Scene-graph.ipynb",
          "setup_tb": "train_model.ipynb",
          "run_training": "train_model.ipynb",
-         "train": "train_model.ipynb",
+         "train_spatial": "train_model.ipynb",
+         "train_node": "train_model.ipynb",
          "val_retrieval": "train_model.ipynb"}
 
 modules = ["model/encoder.py",
-           "model/model.py",
+           "model/model_node.py",
+           "model/model_spatial.py",
            "model/scene_graph/scene_graph.py",
            "trainer.py"]
 

@@ -61,7 +61,8 @@ class SceneGraph(nn.Module):
         mode = self.mode
         object_features = image_features
 #         context_features = self.context_feature_extract(image_features)
-        relation_features = self.relation_feature_extract(image_features)
+        if mode=="spatial":
+            relation_features = self.relation_feature_extract(image_features)
 
         outputs = list()
         objects_index = 0

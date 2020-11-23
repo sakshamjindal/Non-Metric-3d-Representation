@@ -1352,3 +1352,20 @@ python train.py --batch_size 4 \
                 --scene_wt 0.5 \
                 --view_wt 0.5 \
                 --schedule 801
+                
+                
+--------------------------------------------------------------------------------------
+
+Node Exp 1: 
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_node_exp1 \
+                --epochs 300 \
+                --warmup-epoch 101 \
+                --num-cluster 120 \
+                --lr 0.003 \
+                --moco_r 16 \
+                --hyp_N 2 \
+                --mode "node" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt"
