@@ -1307,3 +1307,26 @@ python train.py --batch_size 4 \
                 --scene_wt 0.5 \
                 --view_wt 0.5 \
                 --schedule 800
+                
+                
+------------------------------------------------------------------------------------------------------------------------
+
+Exp 47_continued
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp47_continued \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 120 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --resume "tb_logs/two_obj_spatial_with_scene_and_view_loss_exp47/checkpoint_599.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 801
