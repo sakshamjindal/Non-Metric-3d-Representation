@@ -1,10 +1,10 @@
-SRC = $(wildcard ./*.ipynb)
+SRC = $(wildcard nbs/*.ipynb)
 
-all: backbone docs
+all: core docs
 
-backbone: $(SRC)
+core: $(SRC)
 	nbdev_build_lib
-	touch backbone
+	touch core
 
 sync:
 	nbdev_update_lib
