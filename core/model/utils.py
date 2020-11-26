@@ -86,6 +86,7 @@ def pair_embeddings(output_k, output_q, mode = "node"):
         
     return output_k, output_q
 
+
 def stack_features_across_batch(output_feature_list, mode="node"):
 
     num_batch = len(output_feature_list)
@@ -106,7 +107,7 @@ def stack_features_across_batch(output_feature_list, mode="node"):
         return spatial_features
     
     raise ValueError("Training mode not defined properly. It should be either 'node' or 'spatial'." ) 
-    
+
 
 def convert_indices(index,hyp_N, mode):
     

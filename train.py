@@ -11,14 +11,14 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=5, type=int,
+parser.add_argument('-b', '--batch_size', default=5, type=int,
                     metavar='N',
                     help='mini-batch size (default: 16), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
 parser.add_argument('--lr', '--learning-rate', default=0.03, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
-parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int,
+parser.add_argument('--schedule', default=[120, 160], nargs='+', type=int,
                     help='learning rate schedule (when to drop lr by 10x)')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum of SGD solver')
@@ -46,7 +46,12 @@ parser.add_argument('--temperature', default=0.2, type=float,help='softmax tempe
 parser.add_argument('--ret_freq', default=5, type=int,metavar='N', help='visualize epoch frequency (default: 5)')
 parser.add_argument('-r', '--moco_r', default=35, type=int, help='size of queue (make sure that it is multiple of batch size)')
 parser.add_argument('--hyp_N', default=1, type=int, help='maximum number of objects in per scene')
+parser.add_argument('--K', default=0, type=int, help='number of negative scene embeddings from other views')
 parser.add_argument('--mode', default=None, type=str,help='node or spatial')
+parser.add_argument('--scene_wt', default=1e-3, type=float, help='importance for view_loss (default: 1e-3)')
+parser.add_argument('--view_wt', default=1e-7, type=float, help='importance for scene_loss (default: 1e-7)')
+parser.add_argument('-scene_r', '--scene_r', default=35, type=int, help='size of queue (make sure that it is multiple of batch size)')
+parser.add_argument('-view_r', '--view_r', default=35, type=int, help='size of queue (make sure that it is multiple of batch size)')
 
 if not os.path.exists('tb_logs'):
     os.makedirs('tb_logs')
