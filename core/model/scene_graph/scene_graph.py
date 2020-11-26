@@ -39,9 +39,9 @@ class SceneGraph(nn.Module):
         if mode=="node":
             self.reset_parameters()
 
-#         if self.mode=="spatial":
-#             print("freezing feature extractor scene graph")
-#             self.set_parameter_requires_grad()
+        if self.mode=="spatial":
+            print("freezing feature extractor scene graph")
+            self.set_parameter_requires_grad()
 
     def set_parameter_requires_grad(self):
         self.object_roi_pool.requires_grad = False

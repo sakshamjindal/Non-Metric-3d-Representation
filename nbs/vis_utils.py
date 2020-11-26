@@ -57,6 +57,9 @@ class DoublePool_O():
                 self.images.append(image)
            
                 self.sub_box.append(sub_box)
+            
+                self.scene_num.append(scene_num)
+                self.view_num.append(view_num)
         else:
             assert sub_boxs.shape[0]==obj_boxs.shape[0]
             
@@ -100,15 +103,15 @@ def store_to_pool_e(pool_e, feed_dict_q, metadata, model, args, scene_num, view_
         dim1 = feat_q.shape[0]
         img_q = torch.zeros([dim1, 3, 256, 256])        
         
+        
         if args.mode=='node':
             cnt = 0
-            
             for b in range(feed_dict_q["objects_boxes"].shape[0]//args.hyp_N):
                 for s in range(args.hyp_N):
                     img_q[cnt] = feed_dict_q["images"][b]
                     cnt += 1
                     
-            pool_e.update(feat_q, img_q, feed_dict_q["objects_boxes"], None)
+            pool_e.update(feat_q, img_q, feed_dict_q["objects_boxes"], None, scene_num, view_num)
             
         else:
             dim1 = feat_q.shape[0]
@@ -194,8 +197,8 @@ def draw_bounding_box(image, sub_box, obj_box):
         x1 = int(x1.item()); x2 = int(x2.item()); y1 = int(y1.item()); y2 = int(y2.item())
         img = cv2.rectangle(img1.copy(),(x1,y1),(x2,y2),(255,0,0),2)
         return img
-    
-    return img
+    else:
+        return img1
         
 
 def plot_query_retrieval(imgs_retrieval, outFile, args):
@@ -212,12 +215,12 @@ def plot_query_retrieval(imgs_retrieval, outFile, args):
                 im_to_plot = draw_bounding_box(img, imgs_retrieval[idx][1][im], None)
             else:
                 im_to_plot = draw_bounding_box(img, imgs_retrieval[idx][1][im], imgs_retrieval[idx][2][im])
-            if im>1:
-                ax.set_title('S:{}, V:{}'.format(imgs_retrieval[idx][-2][im], imgs_retrieval[idx][-1][im]))
-            elif im==0:          
-                ax.set_title('S:{}, V:{}'.format(imgs_retrieval[idx][-2][im], imgs_retrieval[idx][-1][im]))
-            else:
-                ax.set_title('S:{}, V:{}'.format(imgs_retrieval[idx][-2][im], imgs_retrieval[idx][-1][im]))
+                if im>1:
+                    ax.set_title('S:{}, V:{}'.format(imgs_retrieval[idx][-2][im], imgs_retrieval[idx][-1][im]))
+                elif im==0:          
+                    ax.set_title('S:{}, V:{}'.format(imgs_retrieval[idx][-2][im], imgs_retrieval[idx][-1][im]))
+                else:
+                    ax.set_title('S:{}, V:{}'.format(imgs_retrieval[idx][-2][im], imgs_retrieval[idx][-1][im]))
             ax.imshow((im_to_plot))
     plt.show()
     plt.close(fig)

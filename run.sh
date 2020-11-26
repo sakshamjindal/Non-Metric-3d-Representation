@@ -1329,30 +1329,7 @@ python train.py --batch_size 4 \
                 --scene_wt 0.5 \
                 --view_wt 0.5 \
                 --schedule 800
-                
-                
-------------------------------------------------------------------------------------------------------------------------
-
-Exp 47_continued
-
-python train.py --batch_size 4 \
-                --seed 0 \
-                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp47_continued \
-                --epochs 800 \
-                --warmup-epoch 801 \
-                --lr 0.012 \
-                --num-cluster 200 \
-                --scene_r 120 \
-                --view_r 48 \
-                --hyp_N 2 \
-                --K 11 \
-                --mode "spatial" \
-                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
-                --resume "tb_logs/two_obj_spatial_with_scene_and_view_loss_exp47/checkpoint_599.pth.tar" \
-                --scene_wt 0.5 \
-                --view_wt 0.5 \
-                --schedule 801
-                
+                               
                 
 --------------------------------------------------------------------------------------
 
@@ -1369,3 +1346,78 @@ python train.py --batch_size 4 \
                 --hyp_N 2 \
                 --mode "node" \
                 --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt"
+                
+                
+----------------------------------------------------------------------------------------------
+
+Exp 49:
+
+Continuation of exp 46, lr=0.012. Scene_r decreased to 120 (6% of the dataset)
+
+---Extension of exp 47 with node features grad disabled/frozen-----
+
+> screen 1
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp49 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 120 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/two_obj_node_exp1/checkpoint_99.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 800
+                
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_with_scene_and_view_loss_exp49 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 120 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --resume "tb_logs/two_obj_spatial_with_scene_and_view_loss_exp49/checkpoint_399.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 800
+
+---------------------------------------------------------------------------------------------------
+
+
+Exp 50 
+
+Extension of exp 48 with node features grad disabled/frozen----------
+and self._dequeue_and_enqueue_scene(k_t.clone().detach()) --removed
+
+> screen 3
+
+python train.py --batch_size 4 \
+                --seed 0 \
+                --exp-dir two_obj_spatial_withnb_scene_and_view_loss_exp50 \
+                --epochs 800 \
+                --warmup-epoch 801 \
+                --lr 0.012 \
+                --num-cluster 200 \
+                --scene_r 60 \
+                --view_r 48 \
+                --hyp_N 2 \
+                --K 11 \
+                --mode "spatial" \
+                --data "/home/mprabhud/dataset/clevr_lang/npys/ab_5t.txt" \
+                --use_pretrained "tb_logs/two_obj_node_exp1/checkpoint_99.pth.tar" \
+                --scene_wt 0.5 \
+                --view_wt 0.5 \
+                --schedule 800
